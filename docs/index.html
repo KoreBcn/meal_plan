@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MealPlan | Weekly Meal Planner</title>
+    <meta
+      name="description"
+      content="MealPlan helps you plan weekly meals, organize your grocery list, and make healthier choices with less stress."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav">
+        <div class="brand">
+          <div class="brand-mark">M</div>
+          <span>MealPlan</span>
+        </div>
+        <nav>
+          <a href="#features">Features</a>
+          <a href="#plan">Weekly plan</a>
+          <a href="#about">About</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">Smart weekly meal planning</p>
+            <h1>Plan your meals, save time, and eat better.</h1>
+            <p class="lead">
+              MealPlan is a simple tool for organizing weekly meals, tracking ingredients,
+              and building a realistic plan that fits your schedule and goals.
+            </p>
+            <div class="actions">
+              <a class="button primary" href="#features">Explore features</a>
+              <a class="button secondary" href="#plan">See sample plan</a>
+            </div>
+            <ul class="mini-stats">
+              <li><strong>7-day</strong><span>planning</span></li>
+              <li><strong>Easy</strong><span>groceries</span></li>
+              <li><strong>Healthy</strong><span>habits</span></li>
+            </ul>
+          </div>
+
+          <div class="hero-card">
+            <div class="day-grid">
+              <div class="day-card active">
+                <span>Mon</span>
+                <strong>Salmon Bowl</strong>
+                <small>Prep: 25 min</small>
+              </div>
+              <div class="day-card">
+                <span>Tue</span>
+                <strong>Chicken Tacos</strong>
+                <small>Prep: 20 min</small>
+              </div>
+              <div class="day-card">
+                <span>Wed</span>
+                <strong>Veggie Pasta</strong>
+                <small>Prep: 15 min</small>
+              </div>
+              <div class="day-card">
+                <span>Thu</span>
+                <strong>Quinoa Salad</strong>
+                <small>Prep: 10 min</small>
+              </div>
+              <div class="day-card">
+                <span>Fri</span>
+                <strong>Soup Night</strong>
+                <small>Prep: 30 min</small>
+              </div>
+            </div>
+            <div class="shopping-list">
+              <h3>Shopping list</h3>
+              <ul>
+                <li>Spinach</li>
+                <li>Tomatoes</li>
+                <li>Chicken thighs</li>
+                <li>Brown rice</li>
+                <li>Avocados</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="features">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Why MealPlan</p>
+            <h2>Everything you need for a smoother week.</h2>
+          </div>
+
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="icon">📅</div>
+              <h3>Weekly planning</h3>
+              <p>Build a simple weekly schedule that balances nutrition, convenience, and variety.</p>
+            </article>
+            <article class="feature-card">
+              <div class="icon">🛒</div>
+              <h3>Shopping list</h3>
+              <p>Automatically organize ingredients by meal so you spend less time at the store.</p>
+            </article>
+            <article class="feature-card">
+              <div class="icon">🥗</div>
+              <h3>Healthy choices</h3>
+              <p>Plan meals around your goals with balanced ingredients and sustainable routines.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="plan" class="plan">
+        <div class="container plan-grid">
+          <div>
+            <p class="eyebrow">Sample week</p>
+            <h2>Turn meal ideas into a realistic routine.</h2>
+            <p>
+              Spend less mental energy deciding what to eat and more time enjoying your meals.
+              The app can help you organize healthy options, leftovers, and quick dinners.
+            </p>
+          </div>
+          <div class="plan-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Meal</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Monday</td>
+                  <td>Grilled chicken & veg</td>
+                  <td>6:30 PM</td>
+                </tr>
+                <tr>
+                  <td>Tuesday</td>
+                  <td>Vegetable stir-fry</td>
+                  <td>7:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Wednesday</td>
+                  <td>Turkey wraps</td>
+                  <td>6:15 PM</td>
+                </tr>
+                <tr>
+                  <td>Thursday</td>
+                  <td>Salad bowl</td>
+                  <td>12:30 PM</td>
+                </tr>
+                <tr>
+                  <td>Friday</td>
+                  <td>Homemade curry</td>
+                  <td>7:15 PM</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="about">
+        <div class="container about-box">
+          <div>
+            <p class="eyebrow">About the project</p>
+            <h2>Built for people who want to eat well without the chaos.</h2>
+          </div>
+          <p>
+            MealPlan is designed to help users build a realistic weekly meal routine, reduce food waste,
+            and make grocery shopping easier. This GitHub Pages site is a clean introduction to the concept
+            and a starting point for the project’s public-facing presence.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div class="brand">
+          <div class="brand-mark">M</div>
+          <span>MealPlan</span>
+        </div>
+        <p>Meal planning made simple.</p>
+      </div>
+    </footer>
+  </body>
+</html>
