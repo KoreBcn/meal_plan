@@ -1241,7 +1241,7 @@ function renderShoppingList() {
               <span>${escapeHtml(item.name)}</span>
             </label>
             <span class="shopping-item-actions">
-              <strong>${Math.round(item.quantity).toLocaleString()} ${escapeHtml(item.unit)}</strong>
+              <strong>(${Math.ceil(item.quantity).toLocaleString()})</strong>
             </span>
           </li>
         `;
