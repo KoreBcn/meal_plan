@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meal Plan Planner</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <h1>Meal Plan</h1>
+        <nav>
+          <button class="nav-btn active" data-section="ingredients">Ingredients</button>
+          <button class="nav-btn" data-section="dishes">Dishes</button>
+          <button class="nav-btn" data-section="planner">Weekly Planner</button>
+          <button class="nav-btn" data-section="shopping">Shopping List</button>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <section id="ingredients" class="panel active">
+          <div class="section-header">
+            <h2>Ingredients</h2>
+            <p>Add items, update prices, and organize them by section.</p>
+          </div>
+
+          <form id="ingredient-form" class="card-form">
+            <input type="hidden" id="ingredient-id" />
+            <div class="field-grid">
+              <label>
+                <span>Name</span>
+                <input id="ingredient-name" type="text" placeholder="e.g. Tomatoes" required />
+              </label>
+              <label>
+                <span>Category</span>
+                <select id="ingredient-category">
+                  <option value="Fruit">Fruit</option>
+                  <option value="Vegetable">Vegetable</option>
+                  <option value="Protein">Protein</option>
+                  <option value="Dairy">Dairy</option>
+                  <option value="Bakery">Bakery</option>
+                  <option value="Pantry">Pantry</option>
+                  <option value="Frozen">Frozen</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label>
+                <span>Unit</span>
+                <input id="ingredient-unit" type="text" value="kg" placeholder="kg" required />
+              </label>
+              <label>
+                <span>Price</span>
+                <input id="ingredient-price" type="number" min="0" step="0.01" value="0" required />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="primary">Save ingredient</button>
+              <button type="button" id="reset-ingredient-form" class="secondary">Clear</button>
+            </div>
+          </form>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Unit</th>
+                  <th>Price</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ingredient-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="dishes" class="panel">
+          <div class="section-header">
+            <h2>Dishes</h2>
+            <p>Create reusable meals by linking them to ingredients and quantities.</p>
+          </div>
+
+          <form id="dish-form" class="card-form">
+            <input type="hidden" id="dish-id" />
+            <div class="field-grid">
+              <label>
+                <span>Dish name</span>
+                <input id="dish-name" type="text" placeholder="e.g. Chicken Stir Fry" required />
+              </label>
+            </div>
+
+            <div class="dish-ingredient-builder">
+              <h3>Add ingredients to dish</h3>
+              <div class="field-grid compact">
+                <label>
+                  <span>Ingredient</span>
+                  <select id="dish-ingredient-select"></select>
+                </label>
+                <label>
+                  <span>Quantity</span>
+                  <input id="dish-ingredient-quantity" type="number" min="0" step="0.1" value="1" />
+                </label>
+                <button type="button" id="add-dish-ingredient" class="secondary">Add ingredient</button>
+              </div>
+              <ul id="dish-ingredient-list" class="ingredient-list"></ul>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="primary">Save dish</button>
+              <button type="button" id="reset-dish-form" class="secondary">Clear</button>
+            </div>
+          </form>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Dish</th>
+                  <th>Ingredients</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="dish-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="planner" class="panel">
+          <div class="section-header">
+            <h2>Weekly Planner</h2>
+            <p>Select dishes for each day and build your week.</p>
+          </div>
+
+          <div id="planner-grid" class="planner-grid"></div>
+        </section>
+
+        <section id="shopping" class="panel">
+          <div class="section-header">
+            <h2>Shopping List</h2>
+            <button id="generate-shopping-list" class="primary">Generate list</button>
+          </div>
+          <div id="shopping-summary" class="shopping-summary"></div>
+          <div id="shopping-list" class="shopping-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

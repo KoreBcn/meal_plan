@@ -1,0 +1,398 @@
+:root {
+  --bg: #f3f6f9;
+  --panel: #ffffff;
+  --panel-alt: #eef4ff;
+  --border: #dfe7f2;
+  --text: #1e2a38;
+  --muted: #607086;
+  --primary: #3867d6;
+  --primary-dark: #2449a5;
+  --success: #1ca66a;
+  --warning: #f6b73c;
+  --danger: #d9534f;
+  --shadow: 0 12px 32px rgba(25, 44, 72, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: linear-gradient(180deg, #12233f 0%, #1d3557 100%);
+  color: white;
+  padding: 28px 18px;
+}
+
+.sidebar h1 {
+  margin: 0 0 24px;
+  font-size: 1.9rem;
+}
+
+.nav-btn {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.nav-btn.active,
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.content {
+  padding: 28px;
+}
+
+.panel {
+  display: none;
+  animation: fadeIn 0.2s ease;
+}
+
+.panel.active {
+  display: block;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.section-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.card-form {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 22px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.field-grid.compact {
+  align-items: end;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+input, select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: white;
+  color: var(--text);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.primary,
+.secondary,
+.danger {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 700;
+}
+
+.primary {
+  background: var(--primary);
+  color: white;
+}
+
+.primary:hover {
+  background: var(--primary-dark);
+}
+
+.secondary {
+  background: #edf3ff;
+  color: var(--primary-dark);
+}
+
+.danger {
+  background: #fdeaea;
+  color: var(--danger);
+}
+
+.table-wrap {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: var(--panel-alt);
+}
+
+th, td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+tbody tr:hover {
+  background: rgba(56, 103, 214, 0.02);
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dish-ingredient-builder {
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.dish-ingredient-builder h3 {
+  margin: 0 0 12px;
+}
+
+.ingredient-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ingredient-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #edf3ff;
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.ingredient-list .remove-chip {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  font-weight: 900;
+  padding: 0;
+}
+
+.planner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.day-plan {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.day-plan h3 {
+  margin: 0 0 14px;
+}
+
+.day-plan .day-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chosen-meals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chosen-meals li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: #f5f8ff;
+  border-radius: 10px;
+  color: var(--text);
+}
+
+.shopping-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.summary-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  min-width: 140px;
+  box-shadow: var(--shadow);
+}
+
+.summary-card strong {
+  display: block;
+  font-size: 1.5rem;
+}
+
+.shopping-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.category-group {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.category-group h3 {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.category-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.category-group li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.shopping-item-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.shopping-item-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.shopping-item-check input:checked + span {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.category-group li:last-child {
+  border-bottom: none;
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    padding-bottom: 12px;
+  }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nav-btn {
+    width: auto;
+    flex: 1 1 180px;
+    text-align: center;
+  }
+}
