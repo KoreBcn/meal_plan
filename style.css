@@ -562,6 +562,42 @@ body {
   font-size: 1rem;
 }
 
+.menu-toggle {
+  display: none;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0;
+  border: 1px solid rgba(241, 247, 237, 0.2);
+  border-radius: 12px;
+  background: rgba(223, 239, 209, 0.1);
+  color: #eef5eb;
+}
+
+.menu-toggle > span {
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.menu-toggle[aria-expanded="true"] > span:first-child {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.menu-toggle[aria-expanded="true"] > span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-toggle[aria-expanded="true"] > span:last-child {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
 .signed-in-user {
   margin: 0 10px 12px;
   color: rgba(241, 247, 237, 0.68);
@@ -965,25 +1001,63 @@ tbody tr:hover {
   .sidebar {
     position: static;
     height: auto;
-    padding: 18px 22px;
+    padding: 16px 22px;
+  }
+
+  .sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
   }
 
   .brand {
-    margin: 0 0 16px;
+    margin: 0;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar-account {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
   }
 
   .signed-in-user {
-    margin-left: 0;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sign-out {
-    margin: 0 0 15px;
+    flex: 0 0 auto;
+    margin: 0;
   }
 
   .sidebar nav {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
+    margin-top: 12px;
+    overflow: hidden;
+    max-height: 240px;
+    opacity: 1;
+    visibility: visible;
+    transition: max-height 0.24s ease, opacity 0.2s ease, margin 0.24s ease, visibility 0s;
+  }
+
+  .sidebar:not(.menu-open) .sidebar-nav {
+    max-height: 0;
+    margin-top: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: max-height 0.24s ease, opacity 0.2s ease, margin 0.24s ease, visibility 0s linear 0.24s;
   }
 
   .nav-btn {
@@ -1002,6 +1076,14 @@ tbody tr:hover {
 }
 
 @media (max-width: 640px) {
+  .content {
+    padding: 16px 16px 24px;
+  }
+
+  .content > .status-message:empty {
+    display: none;
+  }
+
   .analytics-summary {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -1292,6 +1374,19 @@ tbody tr:hover {
   gap: clamp(10px, 1vw, 16px);
 }
 
+.randomize-week {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.randomize-week > span {
+  font-size: 1.05rem;
+}
+
 .day-plan {
   min-width: 0;
   padding: clamp(12px, 1.2vw, 18px);
@@ -1377,13 +1472,91 @@ body[data-theme="dark"] .day-plan .planner-icon-action.danger {
 
 @media (max-width: 640px) {
   .planner-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 380px) {
-  .planner-grid {
     grid-template-columns: 1fr;
+  }
+
+  .mobile-card-table {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-card-table table,
+  .mobile-card-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .mobile-card-table thead {
+    display: none;
+  }
+
+  .mobile-card-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .mobile-card-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+  }
+
+  .mobile-card-table tbody td {
+    display: block;
+    min-width: 0;
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--border);
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-card-table tbody td::before {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--muted);
+    content: attr(data-label);
+    font-size: 0.66rem;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  #dish-table tbody td[data-label="Dish"],
+  #dish-table tbody td[data-label="Cost"],
+  #dish-table tbody td[data-label="Ingredients"],
+  #dish-table tbody td[data-label="Actions"],
+  #ingredient-table tbody td[data-label="Ingredient"],
+  #ingredient-table tbody td[data-label="Actions"] {
+    grid-column: 1 / -1;
+  }
+
+  #dish-table tbody td[data-label="Dish"] {
+    padding-top: 15px;
+  }
+
+  #dish-table .category-badge,
+  #ingredient-table .category-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  #dish-table tbody td[data-label="Actions"],
+  #ingredient-table tbody td[data-label="Actions"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 0;
+  }
+
+  #dish-table tbody td[data-label="Actions"]::before,
+  #ingredient-table tbody td[data-label="Actions"]::before {
+    margin: 0;
   }
 }
 
@@ -1427,36 +1600,6 @@ body[data-theme="dark"] .day-plan .planner-icon-action.danger {
 .planner-kpi-note {
   color: var(--muted);
   font-size: 0.8rem;
-}
-
-.theme-toggle {
-  position: fixed;
-  z-index: 20;
-  top: 18px;
-  right: 22px;
-  display: inline-flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 13px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  font-size: 0.82rem;
-  font-weight: 700;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-
-.theme-toggle:hover {
-  transform: translateY(-1px);
-}
-
-.theme-toggle > span:first-child {
-  color: var(--primary);
-  font-size: 1.15rem;
-  line-height: 1;
 }
 
 .category-group h3 .category-badge {
@@ -1619,13 +1762,6 @@ body[data-theme="dark"] .shopping-item-check input:checked {
 }
 
 @media (max-width: 640px) {
-  .theme-toggle {
-    top: 12px;
-    right: 12px;
-    min-height: 36px;
-    padding: 6px 10px;
-  }
-
   .planner-kpi {
     grid-template-columns: 38px minmax(0, 1fr) auto;
     gap: 8px 10px;

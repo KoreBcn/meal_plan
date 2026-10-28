@@ -6,11 +6,7 @@
     <title>Meal Plan Planner</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
-    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark mode" aria-pressed="false">
-      <span id="theme-toggle-icon" aria-hidden="true">☾</span>
-      <span id="theme-toggle-label">Dark mode</span>
-    </button>
+  <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
       <h1>Meal Plan</h1>
       <p>Sign in to access your meal plan.</p>
@@ -33,13 +29,22 @@
 
     <div class="app-shell" hidden>
       <aside class="sidebar">
-        <a class="brand" href="#" aria-label="Meal Plan home">
-          <span class="brand-mark" aria-hidden="true">M</span>
-          <span>Meal Plan</span>
-        </a>
-        <p id="signed-in-user" class="signed-in-user"></p>
-        <button type="button" id="sign-out" class="secondary sign-out">Sign out</button>
-        <nav>
+        <div class="sidebar-top">
+          <a class="brand" href="#" aria-label="Meal Plan home">
+            <span class="brand-mark" aria-hidden="true">M</span>
+            <span>Meal Plan</span>
+          </a>
+          <button type="button" id="menu-toggle" class="menu-toggle" aria-controls="primary-navigation" aria-expanded="false" aria-label="Open navigation menu">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="sidebar-account">
+          <p id="signed-in-user" class="signed-in-user"></p>
+          <button type="button" id="sign-out" class="secondary sign-out">Sign out</button>
+        </div>
+        <nav id="primary-navigation" class="sidebar-nav">
           <button class="nav-btn active" data-section="ingredients">Ingredients</button>
           <button class="nav-btn" data-section="dishes">Dishes</button>
           <button class="nav-btn" data-section="planner">Weekly Planner</button>
@@ -91,8 +96,8 @@
             </div>
           </form>
 
-          <div class="table-wrap">
-            <table>
+          <div class="table-wrap mobile-card-table">
+            <table id="ingredient-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -154,8 +159,8 @@
               </select>
             </label>
           </div>
-          <div class="table-wrap">
-            <table>
+          <div class="table-wrap mobile-card-table dish-table-wrap">
+            <table id="dish-table">
               <thead>
                 <tr>
                   <th>Dish</th>
@@ -173,8 +178,13 @@
 
         <section id="planner" class="panel">
           <div class="section-header">
-            <h2>Weekly Planner</h2>
-            <p>Select dishes for each day and build your week.</p>
+            <div>
+              <h2>Weekly Planner</h2>
+              <p>Select dishes for each day and build your week.</p>
+            </div>
+            <button type="button" id="randomize-week" class="secondary randomize-week">
+              <span aria-hidden="true">🎲</span> Randomize week
+            </button>
           </div>
 
           <div id="planner-kpi" class="planner-kpi" aria-live="polite"></div>

@@ -226,9 +226,8 @@ const authEmailInput = document.getElementById('auth-email');
 const authPasswordInput = document.getElementById('auth-password');
 const authStatus = document.getElementById('auth-status');
 const signUpButton = document.getElementById('sign-up');
-const themeToggle = document.getElementById('theme-toggle');
-const themeToggleIcon = document.getElementById('theme-toggle-icon');
-const themeToggleLabel = document.getElementById('theme-toggle-label');
+const menuToggle = document.getElementById('menu-toggle');
+const sidebar = document.querySelector('.sidebar');
 const appShell = document.querySelector('.app-shell');
 const appStatus = document.getElementById('app-status');
 const signedInUser = document.getElementById('signed-in-user');
@@ -256,6 +255,7 @@ const resetDishButton = document.getElementById('reset-dish-form');
 
 const plannerGrid = document.getElementById('planner-grid');
 const plannerKpi = document.getElementById('planner-kpi');
+const randomizeWeekButton = document.getElementById('randomize-week');
 const analyticsSummary = document.getElementById('analytics-summary');
 const weeklyChart = document.getElementById('weekly-chart');
 const mealRanking = document.getElementById('meal-ranking');
@@ -272,24 +272,13 @@ let sharedOwnerId = null;
 let realtimeChannel = null;
 let sharedRefreshTimer = null;
 
-const savedTheme = window.localStorage.getItem('mealPlanTheme');
-if (savedTheme !== 'light') {
-  document.body.dataset.theme = 'dark';
-}
-updateThemeToggle();
-
 init();
 
 async function init() {
-  themeToggle.addEventListener('click', () => {
-    const theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
-    window.localStorage.setItem('mealPlanTheme', theme);
-    if (theme === 'dark') {
-      document.body.dataset.theme = theme;
-    } else {
-      delete document.body.dataset.theme;
-    }
-    updateThemeToggle();
+  menuToggle.addEventListener('click', () => {
+    const expanded = sidebar.classList.toggle('menu-open');
+    menuToggle.setAttribute('aria-expanded', String(expanded));
+    menuToggle.setAttribute('aria-label', `${expanded ? 'Close' : 'Open'} navigation menu`);
   });
 
   authForm.addEventListener('submit', (event) => runAuthAction(async () => {
@@ -334,6 +323,7 @@ async function init() {
   bindDishForm();
   bindDefaultValues();
   clearWeeklyPlanButton.addEventListener('click', clearWeeklyPlan);
+  randomizeWeekButton.addEventListener('click', randomizeWeek);
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(() => handleAuthSession(session), 0);
@@ -346,14 +336,6 @@ async function init() {
     }
     await handleAuthSession(data.session);
   });
-}
-
-function updateThemeToggle() {
-  const isDark = document.body.dataset.theme === 'dark';
-  themeToggle.setAttribute('aria-pressed', String(isDark));
-  themeToggle.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} mode`);
-  themeToggleIcon.textContent = isDark ? '☀' : '☾';
-  themeToggleLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
 }
 
 async function handleAuthSession(session) {
@@ -416,6 +398,12 @@ function bindNavigation() {
       const target = button.dataset.section;
       navButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
       panels.forEach((panel) => panel.classList.toggle('active', panel.id === target));
+      sidebar.classList.remove('menu-open');
+      menuToggle.setAttribute('aria-expanded', 'false');
+      menuToggle.setAttribute('aria-label', 'Open navigation menu');
+      if (window.matchMedia('(max-width: 900px)').matches) {
+        menuToggle.focus();
+      }
     });
   });
 }
@@ -598,11 +586,11 @@ function renderIngredients() {
   state.ingredients.forEach((ingredient) => {
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${escapeHtml(ingredient.name)}</td>
-      <td>${renderCategoryBadge(ingredient.category)}</td>
-      <td>${escapeHtml(ingredient.unit)}</td>
-      <td>kr. ${Number(ingredient.price).toFixed(2)}</td>
-      <td>
+      <td data-label="Ingredient">${escapeHtml(ingredient.name)}</td>
+      <td data-label="Category">${renderCategoryBadge(ingredient.category)}</td>
+      <td data-label="Unit">${escapeHtml(ingredient.unit)}</td>
+      <td data-label="Price">kr. ${Number(ingredient.price).toFixed(2)}</td>
+      <td data-label="Actions">
         <div class="table-actions">
           <button type="button" class="secondary icon-action" data-edit-ingredient="${ingredient.id}" aria-label="Edit ${escapeHtml(ingredient.name)}" title="Edit ${escapeHtml(ingredient.name)}">${renderActionIcon('edit')}</button>
           <button type="button" class="danger icon-action" data-remove-ingredient="${ingredient.id}" aria-label="Remove ${escapeHtml(ingredient.name)}" title="Remove ${escapeHtml(ingredient.name)}">${renderActionIcon('remove')}</button>
@@ -700,18 +688,18 @@ function renderDishes() {
       ? `<span class="dish-rank" aria-label="${sortMode === 'week' ? 'This week' : 'Historical'} rank ${visibleRank}; ${rankingCount} ${rankingCount === 1 ? 'plan' : 'plans'}">#${visibleRank}<span>${rankingCount} ${rankingCount === 1 ? 'plan' : 'plans'}</span></span>`
       : '';
     row.innerHTML = `
-      <td>
+      <td data-label="Dish">
         <div class="dish-name-cell">
           <strong>${escapeHtml(dish.name)}</strong>
           ${ranking}
         </div>
         ${ratingLabel ? `<span class="dish-rating" aria-label="${rating} out of 5 stars">${ratingLabel}</span>` : ''}
       </td>
-      <td>${dish.dish_type ? renderCategoryBadge(dish.dish_type) : '—'}</td>
-      <td>${Number(dish.servings) || 1}</td>
-      <td>${dish.total_price === null || dish.total_price === undefined ? '—' : `kr. ${Number(dish.total_price).toFixed(2)}`}</td>
-      <td>${dish.ingredients.map((ingredient) => `${escapeHtml(ingredient.name || 'Ingredient')} (${Number(ingredient.quantity)})`).join(', ') || 'No ingredients yet'}</td>
-      <td>
+      <td data-label="Type">${dish.dish_type ? renderCategoryBadge(dish.dish_type) : '—'}</td>
+      <td data-label="Serves">${Number(dish.servings) || 1}</td>
+      <td data-label="Cost">${dish.total_price === null || dish.total_price === undefined ? '—' : `kr. ${Number(dish.total_price).toFixed(2)}`}</td>
+      <td data-label="Ingredients">${dish.ingredients.map((ingredient) => `${escapeHtml(ingredient.name || 'Ingredient')} (${Number(ingredient.quantity)})`).join(', ') || 'No ingredients yet'}</td>
+      <td data-label="Actions">
         <div class="table-actions">
           <button type="button" class="secondary icon-action" data-edit-dish="${dish.id}" aria-label="Edit ${escapeHtml(dish.name)}" title="Edit ${escapeHtml(dish.name)}">${renderActionIcon('edit')}</button>
           <button type="button" class="danger icon-action" data-remove-dish="${dish.id}" aria-label="Remove ${escapeHtml(dish.name)}" title="Remove ${escapeHtml(dish.name)}">${renderActionIcon('remove')}</button>
@@ -892,6 +880,51 @@ function renderPlanner() {
   });
 
   renderMealAnalytics();
+}
+
+async function randomizeWeek() {
+  const dishes = state.dishes.filter((dish) => !isLeftoversDish(dish));
+  if (!dishes.length) {
+    showMessage(appStatus, 'Add at least one dish before randomizing the week.', true);
+    return;
+  }
+
+  const currentMealCount = Object.values(state.plan).reduce((total, meals) => total + meals.length, 0);
+  if (currentMealCount && !window.confirm('Replace all planned meals with a random dish for each day?')) {
+    return;
+  }
+
+  await runAppAction(async () => {
+    const shuffledDishes = [...dishes];
+    for (let index = shuffledDishes.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [shuffledDishes[index], shuffledDishes[randomIndex]] = [shuffledDishes[randomIndex], shuffledDishes[index]];
+    }
+
+    const plannedDishes = dayNames.map((day, index) => ({
+      user_id: sharedOwnerId,
+      day,
+      dish_id: shuffledDishes[index % shuffledDishes.length].id
+    }));
+
+    const { error: deleteError } = await supabaseClient
+      .from('meal_plan')
+      .delete()
+      .in('day', dayNames);
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    const { error: insertError } = await supabaseClient
+      .from('meal_plan')
+      .insert(plannedDishes);
+    if (insertError) {
+      throw insertError;
+    }
+
+    state.plan = Object.fromEntries(dayNames.map((day, index) => [day, [plannedDishes[index].dish_id]]));
+    renderAll();
+  });
 }
 
 function renderMealAnalytics() {
