@@ -96,6 +96,12 @@
             </div>
           </form>
 
+          <div class="collection-toolbar">
+            <label for="ingredient-search">
+              <span>Search ingredients</span>
+              <input id="ingredient-search" type="search" placeholder="Search by name or category" />
+            </label>
+          </div>
           <div class="table-wrap mobile-card-table">
             <table id="ingredient-table">
               <thead>
@@ -150,6 +156,10 @@
           </form>
 
           <div class="collection-toolbar">
+            <label for="dish-search">
+              <span>Search meals</span>
+              <input id="dish-search" type="search" placeholder="Search by name or ingredient" />
+            </label>
             <label for="dish-sort">
               <span>Sort dishes</span>
               <select id="dish-sort">
@@ -189,6 +199,12 @@
 
           <div id="planner-kpi" class="planner-kpi" aria-live="polite"></div>
           <div id="planner-grid" class="planner-grid"></div>
+          <section class="manual-shopping-section" aria-labelledby="manual-shopping-title">
+            <div class="manual-shopping-heading">
+              <h3 id="manual-shopping-title">Individual ingredients</h3>
+            </div>
+            <div id="manual-shopping-picker" class="manual-shopping-picker"></div>
+          </section>
         </section>
 
         <section id="analytics" class="panel">

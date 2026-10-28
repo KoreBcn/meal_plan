@@ -1,5 +1,5 @@
 -- DESTRUCTIVE REPLACEMENT: this transaction replaces meal-plan data for every currently confirmed Supabase account.
--- It clears existing ingredients, dishes, recipes, weekly plans, and checked shopping items.
+-- It clears existing ingredients, dishes, recipes, weekly plans, and shopping-list items.
 -- Then it imports one shared plan and authorizes every confirmed account currently in Supabase Auth.
 -- Confirm both partner accounts have confirmed email before running; new accounts are not automatically authorized.
 -- Approved source handling: highest price for duplicate names; generic "unit" for blank UoM.
@@ -76,6 +76,13 @@ create table if not exists public.shopping_checks (
   checked boolean not null default false
 );
 
+create table if not exists public.shopping_items (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  ingredient_id uuid not null primary key,
+  foreign key (ingredient_id, user_id)
+    references public.ingredients (id, user_id) on delete cascade
+);
+
 create table if not exists public.household_members (
   user_id uuid primary key references auth.users (id) on delete cascade,
   added_at timestamptz not null default now()
@@ -115,6 +122,7 @@ alter table public.dishes enable row level security;
 alter table public.dish_ingredients enable row level security;
 alter table public.meal_plan enable row level security;
 alter table public.shopping_checks enable row level security;
+alter table public.shopping_items enable row level security;
 alter table public.household_members enable row level security;
 alter table public.shared_settings enable row level security;
 
@@ -153,6 +161,12 @@ create policy "Shared household manages shopping checks" on public.shopping_chec
   using (public.is_shared_meal_plan_member())
   with check (public.is_shared_meal_plan_member());
 
+drop policy if exists "Shared household manages shopping items" on public.shopping_items;
+create policy "Shared household manages shopping items" on public.shopping_items
+  for all to authenticated
+  using (public.is_shared_meal_plan_member())
+  with check (public.is_shared_meal_plan_member());
+
 drop policy if exists "Members read their own membership" on public.household_members;
 create policy "Members read their own membership" on public.household_members
   for select to authenticated
@@ -164,11 +178,12 @@ create policy "Household members read shared settings" on public.shared_settings
   using (public.is_shared_meal_plan_member());
 
 revoke all on public.ingredients, public.dishes, public.dish_ingredients,
-  public.meal_plan, public.shopping_checks, public.household_members,
-  public.shared_settings from public, anon;
+  public.meal_plan, public.shopping_checks, public.shopping_items,
+  public.household_members, public.shared_settings from public, anon;
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.ingredients, public.dishes,
-  public.dish_ingredients, public.meal_plan, public.shopping_checks to authenticated;
+  public.dish_ingredients, public.meal_plan, public.shopping_checks,
+  public.shopping_items to authenticated;
 grant select on public.household_members, public.shared_settings to authenticated;
 
 create or replace function public.save_dish(
@@ -277,6 +292,14 @@ begin
       and tablename = 'shopping_checks'
   ) then
     execute 'alter publication supabase_realtime add table public.shopping_checks';
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'shopping_items'
+  ) then
+    execute 'alter publication supabase_realtime add table public.shopping_items';
   end if;
   if not exists (
     select 1 from pg_publication_tables
@@ -1166,6 +1189,7 @@ INSERT INTO import_owner SELECT id FROM auth.users WHERE email_confirmed_at IS N
 
 DELETE FROM public.meal_plan;
 DELETE FROM public.shopping_checks;
+DELETE FROM public.shopping_items;
 DELETE FROM public.dish_ingredients;
 DELETE FROM public.dishes;
 DELETE FROM public.ingredients;

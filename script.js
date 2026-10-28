@@ -217,6 +217,7 @@ const state = {
   ingredients: [],
   dishes: [],
   plan: Object.fromEntries(dayNames.map((day) => [day, []])),
+  manualShoppingItems: [],
   shoppingChecks: {}
 };
 
@@ -236,6 +237,7 @@ const navButtons = document.querySelectorAll('.nav-btn');
 const panels = document.querySelectorAll('.panel');
 const ingredientForm = document.getElementById('ingredient-form');
 const ingredientTableBody = document.getElementById('ingredient-table-body');
+const ingredientSearchInput = document.getElementById('ingredient-search');
 const ingredientIdInput = document.getElementById('ingredient-id');
 const ingredientNameInput = document.getElementById('ingredient-name');
 const ingredientCategoryInput = document.getElementById('ingredient-category');
@@ -245,6 +247,7 @@ const resetIngredientButton = document.getElementById('reset-ingredient-form');
 
 const dishForm = document.getElementById('dish-form');
 const dishTableBody = document.getElementById('dish-table-body');
+const dishSearchInput = document.getElementById('dish-search');
 const dishIdInput = document.getElementById('dish-id');
 const dishNameInput = document.getElementById('dish-name');
 const dishIngredientSelect = document.getElementById('dish-ingredient-select');
@@ -255,6 +258,7 @@ const resetDishButton = document.getElementById('reset-dish-form');
 
 const plannerGrid = document.getElementById('planner-grid');
 const plannerKpi = document.getElementById('planner-kpi');
+const manualShoppingPicker = document.getElementById('manual-shopping-picker');
 const randomizeWeekButton = document.getElementById('randomize-week');
 const analyticsSummary = document.getElementById('analytics-summary');
 const weeklyChart = document.getElementById('weekly-chart');
@@ -351,6 +355,7 @@ async function handleAuthSession(session) {
       ingredients: [],
       dishes: [],
       plan: Object.fromEntries(dayNames.map((day) => [day, []])),
+      manualShoppingItems: [],
       shoppingChecks: {}
     });
     currentDishIngredients = [];
@@ -426,6 +431,8 @@ function bindDefaultValues() {
   });
 
   dishSortSelect.addEventListener('change', renderDishes);
+  ingredientSearchInput.addEventListener('input', renderIngredients);
+  dishSearchInput.addEventListener('input', renderDishes);
 
   addDishIngredientButton.addEventListener('click', () => {
     const ingredientId = dishIngredientSelect.value;
@@ -582,8 +589,12 @@ function updateIngredientCategoryOptions() {
 
 function renderIngredients() {
   ingredientTableBody.innerHTML = '';
+  const searchTerm = ingredientSearchInput.value.trim().toLocaleLowerCase();
+  const filteredIngredients = state.ingredients.filter((ingredient) =>
+    `${ingredient.name} ${ingredient.category}`.toLowerCase().includes(searchTerm)
+  );
 
-  state.ingredients.forEach((ingredient) => {
+  filteredIngredients.forEach((ingredient) => {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td data-label="Ingredient">${escapeHtml(ingredient.name)}</td>
@@ -600,6 +611,10 @@ function renderIngredients() {
 
     ingredientTableBody.appendChild(row);
   });
+
+  if (!filteredIngredients.length) {
+    ingredientTableBody.innerHTML = `<tr><td colspan="5" class="empty">${searchTerm ? 'No matching ingredients.' : 'No ingredients yet.'}</td></tr>`;
+  }
 
   ingredientTableBody.querySelectorAll('[data-edit-ingredient]').forEach((button) => {
     button.addEventListener('click', () => populateIngredientForm(button.dataset.editIngredient));
@@ -635,6 +650,7 @@ async function removeIngredient(id) {
   }
 
   state.ingredients = state.ingredients.filter((ingredient) => ingredient.id !== id);
+  state.manualShoppingItems = state.manualShoppingItems.filter((ingredientId) => ingredientId !== id);
 
   state.dishes = state.dishes.map((dish) => ({
     ...dish,
@@ -653,6 +669,7 @@ async function removeIngredient(id) {
 
 function renderDishes() {
   dishTableBody.innerHTML = '';
+  const searchTerm = dishSearchInput.value.trim().toLocaleLowerCase();
 
   const sortMode = dishSortSelect.value;
   const weeklyCounts = getWeeklyDishCounts(true);
@@ -672,7 +689,9 @@ function renderDishes() {
       }
     }
     return left.name.localeCompare(right.name);
-  });
+  }).filter((dish) => `${dish.name} ${dish.dish_type || ''} ${dish.ingredients.map((ingredient) => ingredient.name || '').join(' ')}`
+    .toLowerCase()
+    .includes(searchTerm));
   let visibleRank = 0;
 
   sortedDishes.forEach((dish) => {
@@ -709,6 +728,10 @@ function renderDishes() {
 
     dishTableBody.appendChild(row);
   });
+
+  if (!sortedDishes.length) {
+    dishTableBody.innerHTML = `<tr><td colspan="6" class="empty">${searchTerm ? 'No matching meals.' : 'No meals yet.'}</td></tr>`;
+  }
 
   dishTableBody.querySelectorAll('[data-edit-dish]').forEach((button) => {
     button.addEventListener('click', () => populateDishForm(button.dataset.editDish));
@@ -823,12 +846,64 @@ function renderPlanner() {
         ${chosenMeals.length ? chosenMeals.map((dishId) => {
           const dish = state.dishes.find((item) => item.id === dishId);
           return `<li><span>${dish ? escapeHtml(dish.name) : 'Unknown dish'}</span><button type="button" class="danger planner-icon-action" data-remove-day-dish="${day}|${dishId}" aria-label="Remove ${dish ? escapeHtml(dish.name) : 'meal'} from ${day}" title="Remove meal">${renderActionIcon('remove')}</button></li>`;
-        }).join('') : '<li class="empty">No meals planned</li>'}
+        }).join('') : ''}
       </ul>
     `;
 
     plannerGrid.appendChild(planWrapper);
   });
+
+  const categories = [...new Set(state.ingredients.map((ingredient) => ingredient.category).filter(Boolean))];
+  if (!categories.length) {
+    manualShoppingPicker.innerHTML = '<p class="empty">Add ingredients to see categories here.</p>';
+  } else {
+    manualShoppingPicker.innerHTML = categories.map((category) => {
+      const options = state.ingredients
+        .filter((ingredient) => ingredient.category === category)
+        .map((ingredient) => `<option value="${escapeHtml(ingredient.id)}">${escapeHtml(ingredient.name)}</option>`)
+        .join('');
+      const selectedItems = state.manualShoppingItems
+        .map((ingredientId) => findIngredientById(ingredientId))
+        .filter((ingredient) => ingredient?.category === category);
+      return `
+        <section class="manual-shopping-bucket">
+          <h4>${getCategoryIcon(category)} ${escapeHtml(category)}</h4>
+          <label>
+            <span>Add ingredient</span>
+            <select data-manual-shopping-category="${escapeHtml(category)}">
+              <option value="">Choose an ingredient</option>
+              ${options}
+            </select>
+          </label>
+          <ul class="manual-shopping-items">
+            ${selectedItems.length ? selectedItems.map((ingredient) => `
+              <li>
+                <span>${escapeHtml(ingredient.name)} <small>1 ${escapeHtml(ingredient.unit || 'unit')}</small></span>
+                <button type="button" class="danger planner-icon-action" data-remove-manual-shopping="${escapeHtml(ingredient.id)}" aria-label="Remove ${escapeHtml(ingredient.name)} from the weekly planner" title="Remove ingredient">${renderActionIcon('remove')}</button>
+              </li>
+            `).join('') : '<li class="empty">No ingredients added</li>'}
+          </ul>
+        </section>
+      `;
+    }).join('');
+
+    manualShoppingPicker.querySelectorAll('[data-manual-shopping-category]').forEach((select) => {
+      select.addEventListener('change', () => {
+        const ingredientId = select.value;
+        if (!ingredientId) {
+          return;
+        }
+        runAppAction(async () => {
+          await addIndividualShoppingIngredient(ingredientId);
+          select.value = '';
+        });
+      });
+    });
+
+    manualShoppingPicker.querySelectorAll('[data-remove-manual-shopping]').forEach((button) => {
+      button.addEventListener('click', () => runAppAction(() => removeIndividualShoppingIngredient(button.dataset.removeManualShopping)));
+    });
+  }
 
   plannerGrid.querySelectorAll('[data-add-day-dish]').forEach((button) => {
     button.addEventListener('click', () => runAppAction(async () => {
@@ -880,6 +955,44 @@ function renderPlanner() {
   });
 
   renderMealAnalytics();
+}
+
+async function addIndividualShoppingIngredient(ingredientId) {
+  const ingredient = findIngredientById(ingredientId);
+  if (!ingredient) {
+    return;
+  }
+  if (state.manualShoppingItems.includes(ingredientId)) {
+    showMessage(appStatus, `${ingredient.name} is already on the shopping list.`);
+    return;
+  }
+
+  const { error } = await supabaseClient.from('shopping_items').upsert({
+    user_id: sharedOwnerId,
+    ingredient_id: ingredientId
+  }, { onConflict: 'ingredient_id', ignoreDuplicates: true });
+  if (error) {
+    throw error;
+  }
+
+  state.manualShoppingItems.push(ingredientId);
+  renderPlanner();
+  renderShoppingList();
+  showMessage(appStatus, `${ingredient.name} added to the shopping list.`);
+}
+
+async function removeIndividualShoppingIngredient(ingredientId) {
+  const { error } = await supabaseClient
+    .from('shopping_items')
+    .delete()
+    .eq('ingredient_id', ingredientId);
+  if (error) {
+    throw error;
+  }
+
+  state.manualShoppingItems = state.manualShoppingItems.filter((id) => id !== ingredientId);
+  renderPlanner();
+  renderShoppingList();
 }
 
 async function randomizeWeek() {
@@ -1043,13 +1156,39 @@ function renderShoppingList() {
         return;
       }
 
-      const current = ingredientMap.get(ingredientName) || { name: ingredientName, quantity: 0, category: ingredient?.category || 'Other', unit: ingredient?.unit || 'unit', price: ingredient?.price || 0 };
+      const current = ingredientMap.get(ingredientName) || {
+        name: ingredientName,
+        quantity: 0,
+        category: ingredient?.category || 'Other',
+        unit: ingredient?.unit || 'unit',
+        price: ingredient?.price || 0
+      };
       current.quantity += Number(ingredientLine.quantity) || 0;
       current.category = ingredient?.category || current.category;
       current.unit = ingredient?.unit || current.unit;
       current.price = ingredient?.price || current.price;
       ingredientMap.set(ingredientName, current);
     });
+  });
+
+  state.manualShoppingItems.forEach((ingredientId) => {
+    const ingredient = findIngredientById(ingredientId);
+    if (!ingredient) {
+      return;
+    }
+
+    const current = ingredientMap.get(ingredient.name) || {
+      name: ingredient.name,
+      quantity: 0,
+      category: ingredient.category || 'Other',
+      unit: ingredient.unit || 'unit',
+      price: ingredient.price || 0
+    };
+    current.quantity += 1;
+    current.category = ingredient.category || current.category;
+    current.unit = ingredient.unit || current.unit;
+    current.price = ingredient.price || current.price;
+    ingredientMap.set(ingredient.name, current);
   });
 
   const categories = new Map();
@@ -1073,7 +1212,7 @@ function renderShoppingList() {
   shoppingSummary.innerHTML = `
     <div class="summary-card">
       <span>Items</span>
-      <strong>${totalItems.toFixed(1)}</strong>
+      <strong>${Math.round(totalItems).toLocaleString()}</strong>
     </div>
     <div class="summary-card">
       <span>Categories</span>
@@ -1081,12 +1220,12 @@ function renderShoppingList() {
     </div>
     <div class="summary-card">
       <span>Estimated cost</span>
-      <strong>kr. ${totalEstimatedCost.toFixed(2)}</strong>
+      <strong>kr. ${Math.round(totalEstimatedCost).toLocaleString()}</strong>
     </div>
   `;
 
   if (!ingredientMap.size) {
-    shoppingList.innerHTML = '<div class="empty">Add dishes to your weekly planner and your shopping list will appear here.</div>';
+    shoppingList.innerHTML = '<div class="empty">Add dishes or individual ingredients from your weekly planner to build your shopping list.</div>';
     return;
   }
 
@@ -1101,7 +1240,9 @@ function renderShoppingList() {
               <input type="checkbox" data-shopping-check="${escapeHtml(key)}" ${checked ? 'checked' : ''} />
               <span>${escapeHtml(item.name)}</span>
             </label>
-            <strong>${item.quantity.toFixed(1)} ${escapeHtml(item.unit)}</strong>
+            <span class="shopping-item-actions">
+              <strong>${Math.round(item.quantity).toLocaleString()} ${escapeHtml(item.unit)}</strong>
+            </span>
           </li>
         `;
       })
@@ -1133,11 +1274,12 @@ function renderShoppingList() {
       state.shoppingChecks[key] = checked;
     }));
   });
+
 }
 
 async function clearWeeklyPlan() {
   const confirmed = window.confirm(
-    'Clear all planned meals and shopping-list checkmarks? Your dishes, ingredients, and historical rankings will be kept.'
+    'Clear all planned meals, individually added ingredients, and shopping-list checkmarks? Your dishes, ingredients, and historical rankings will be kept.'
   );
   if (!confirmed) {
     return;
@@ -1160,7 +1302,16 @@ async function clearWeeklyPlan() {
       throw checksError;
     }
 
+    const { error: itemsError } = await supabaseClient
+      .from('shopping_items')
+      .delete()
+      .not('ingredient_id', 'is', null);
+    if (itemsError) {
+      throw itemsError;
+    }
+
     state.plan = Object.fromEntries(dayNames.map((day) => [day, []]));
+    state.manualShoppingItems = [];
     state.shoppingChecks = {};
     renderAll();
   });
@@ -1265,6 +1416,25 @@ function subscribeToSharedUpdates() {
       renderShoppingList();
     });
 
+  realtimeChannel.on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'shopping_items'
+  }, (payload) => {
+    const row = payload.eventType === 'DELETE' ? payload.old : payload.new;
+    if (!row?.ingredient_id) {
+      return;
+    }
+    state.manualShoppingItems = state.manualShoppingItems.filter((id) => id !== row.ingredient_id);
+    if (payload.eventType !== 'DELETE') {
+      if (!state.manualShoppingItems.includes(row.ingredient_id)) {
+        state.manualShoppingItems.push(row.ingredient_id);
+      }
+    }
+    renderPlanner();
+    renderShoppingList();
+  });
+
   ['ingredients', 'dishes', 'dish_ingredients', 'meal_plan'].forEach((table) => {
     realtimeChannel.on('postgres_changes', {
       event: '*',
@@ -1322,15 +1492,16 @@ async function loadUserState(userId, initializeIfNeeded = true) {
     throw new Error('This account is not part of the shared meal plan. Ask the owner to add it in Supabase.');
   }
 
-  const [ingredientsResult, dishesResult, linesResult, planResult, checksResult, settingsResult] = await Promise.all([
+  const [ingredientsResult, dishesResult, linesResult, planResult, checksResult, shoppingItemsResult, settingsResult] = await Promise.all([
     supabaseClient.from('ingredients').select('id,name,category,unit,price').order('name'),
     supabaseClient.from('dishes').select('id,name,dish_type,servings,total_price,price_per_person,historical_times,rating,source_of_recipe,recipe_notes,future_food_projects,main_ingredient').order('name'),
     supabaseClient.from('dish_ingredients').select('dish_id,ingredient_id,quantity'),
     supabaseClient.from('meal_plan').select('day,dish_id'),
     supabaseClient.from('shopping_checks').select('check_key,checked'),
+    supabaseClient.from('shopping_items').select('ingredient_id'),
     supabaseClient.from('shared_settings').select('owner_id').eq('id', 1).maybeSingle()
   ]);
-  const results = [ingredientsResult, dishesResult, linesResult, planResult, checksResult, settingsResult];
+  const results = [ingredientsResult, dishesResult, linesResult, planResult, checksResult, shoppingItemsResult, settingsResult];
   const failedResult = results.find((result) => result.error);
   if (failedResult) {
     throw failedResult.error;
@@ -1382,6 +1553,7 @@ async function loadUserState(userId, initializeIfNeeded = true) {
       ingredients: linesByDishId.get(dish.id) || []
     })),
     plan,
+    manualShoppingItems: shoppingItemsResult.data.map((item) => item.ingredient_id),
     shoppingChecks: Object.fromEntries(
       checksResult.data.map((check) => [check.check_key, check.checked])
     )
