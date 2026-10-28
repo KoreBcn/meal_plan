@@ -45,23 +45,26 @@
           <button type="button" id="sign-out" class="secondary sign-out">Sign out</button>
         </div>
         <nav id="primary-navigation" class="sidebar-nav">
-          <button class="nav-btn active" data-section="ingredients">Ingredients</button>
+          <button class="nav-btn" data-section="ingredients">Ingredients</button>
           <button class="nav-btn" data-section="dishes">Dishes</button>
           <button class="nav-btn" data-section="planner">Weekly Planner</button>
-          <button class="nav-btn" data-section="shopping">Shopping List</button>
+          <button class="nav-btn active" data-section="shopping">Shopping List</button>
           <button class="nav-btn" data-section="analytics">Analytics</button>
         </nav>
       </aside>
 
       <main class="content">
         <p id="app-status" class="status-message" role="status" aria-live="polite"></p>
-        <section id="ingredients" class="panel active">
+        <section id="ingredients" class="panel">
           <div class="section-header">
-            <h2>Ingredients</h2>
-            <p>Add items, update prices, and organize them by section.</p>
+            <div>
+              <h2>Ingredients</h2>
+              <p>Add items, update prices, and organize them by section.</p>
+            </div>
+            <button type="button" id="new-ingredient" class="primary add-item-button" aria-label="Add ingredient" title="Add ingredient"><span aria-hidden="true">+</span></button>
           </div>
 
-          <form id="ingredient-form" class="card-form">
+          <form id="ingredient-form" class="card-form" hidden>
             <input type="hidden" id="ingredient-id" />
             <div class="field-grid">
               <label>
@@ -120,11 +123,14 @@
 
         <section id="dishes" class="panel">
           <div class="section-header">
-            <h2>Dishes</h2>
-            <p>Create reusable meals by linking them to ingredients and quantities.</p>
+            <div>
+              <h2>Dishes</h2>
+              <p>Create reusable meals by linking them to ingredients and quantities.</p>
+            </div>
+            <button type="button" id="new-dish" class="primary add-item-button" aria-label="Add dish" title="Add dish"><span aria-hidden="true">+</span></button>
           </div>
 
-          <form id="dish-form" class="card-form">
+          <form id="dish-form" class="card-form" hidden>
             <input type="hidden" id="dish-id" />
             <div class="field-grid">
               <label>
@@ -192,13 +198,21 @@
               <h2>Weekly Planner</h2>
               <p>Select dishes for each day and build your week.</p>
             </div>
-            <button type="button" id="randomize-week" class="secondary randomize-week">
-              <span aria-hidden="true">🎲</span> Randomize week
-            </button>
+            <div class="planner-header-actions">
+              <button type="button" id="randomize-week" class="secondary randomize-week">
+                <span aria-hidden="true">🎲</span> Randomize week
+              </button>
+              <button type="button" id="clear-weekly-plan" class="danger">Start over</button>
+            </div>
           </div>
 
           <div id="planner-kpi" class="planner-kpi" aria-live="polite"></div>
-          <div id="planner-grid" class="planner-grid"></div>
+          <section class="weekly-plan-section" aria-labelledby="weekly-plan-title">
+            <div class="weekly-plan-heading">
+              <h3 id="weekly-plan-title">Meals by day</h3>
+            </div>
+            <div id="planner-grid" class="planner-grid"></div>
+          </section>
           <section class="manual-shopping-section" aria-labelledby="manual-shopping-title">
             <div class="manual-shopping-heading">
               <h3 id="manual-shopping-title">Individual ingredients</h3>
@@ -249,15 +263,9 @@
           </section>
         </section>
 
-        <section id="shopping" class="panel">
+        <section id="shopping" class="panel active">
           <div class="section-header">
             <h2>Shopping List</h2>
-            <div class="shopping-header-actions">
-              <span id="live-sync-status" class="live-sync-status" role="status" aria-live="polite">
-                <span aria-hidden="true"></span>Connecting to shared list
-              </span>
-              <button type="button" id="clear-weekly-plan" class="danger">Start over</button>
-            </div>
           </div>
           <div id="shopping-summary" class="shopping-summary"></div>
           <div id="shopping-list" class="shopping-list"></div>

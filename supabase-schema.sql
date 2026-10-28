@@ -71,9 +71,13 @@ create table if not exists public.shopping_checks (
 create table if not exists public.shopping_items (
   user_id uuid not null references auth.users (id) on delete cascade,
   ingredient_id uuid not null primary key,
+  quantity numeric(12, 3) not null default 1 check (quantity > 0),
   foreign key (ingredient_id, user_id)
     references public.ingredients (id, user_id) on delete cascade
 );
+
+alter table public.shopping_items
+  add column if not exists quantity numeric(12, 3) not null default 1 check (quantity > 0);
 
 create table if not exists public.household_members (
   user_id uuid primary key references auth.users (id) on delete cascade,

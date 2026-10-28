@@ -21,7 +21,7 @@ The source's unit column was blank, so imported ingredients use the generic `uni
 
 The standalone [`supabase-schema.sql`](./supabase-schema.sql) defines the shared household schema for a fresh project. The import script includes these definitions, so you do not need to run both scripts for this project.
 
-If your database is already set up, run the updated [`supabase-schema.sql`](./supabase-schema.sql) once to add the shared individual shopping-items table and its access policies. This schema update preserves existing meal-plan data.
+If your database is already set up, run the updated [`supabase-schema.sql`](./supabase-schema.sql) once to add or update the shared individual shopping-items table, its quantity field, and access policies. This schema update preserves existing meal-plan data.
 
 Create `supabase-config.js` in the project root using [`supabase-config.example.js`](./supabase-config.example.js) as a template, then add your Supabase project URL and publishable key. This local file is excluded from Git. The publishable key is intended for browser use; never put a service-role key in this app.
 

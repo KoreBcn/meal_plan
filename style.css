@@ -147,6 +147,24 @@ button {
   color: var(--muted);
 }
 
+.add-item-button {
+  display: flex;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.add-item-button span {
+  display: block;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
 .card-form {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -154,6 +172,10 @@ button {
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 22px;
+}
+
+.card-form[hidden] {
+  display: none;
 }
 
 .field-grid {
@@ -338,6 +360,11 @@ tbody tr:hover {
   gap: 18px;
 }
 
+.weekly-plan-section .planner-grid {
+  margin-top: 18px;
+}
+
+.weekly-plan-section,
 .manual-shopping-section {
   margin-top: 24px;
   padding: 20px;
@@ -347,6 +374,7 @@ tbody tr:hover {
   box-shadow: var(--shadow);
 }
 
+.weekly-plan-heading h3,
 .manual-shopping-heading h3 {
   margin: 0 0 6px;
 }
@@ -389,19 +417,48 @@ tbody tr:hover {
 }
 
 .manual-shopping-items li:not(.empty) {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 32px;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
   border-radius: 9px;
   background: var(--panel);
+}
+
+.manual-shopping-items li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .manual-shopping-items small {
   display: block;
   margin-top: 2px;
   color: var(--muted);
+}
+
+.manual-shopping-quantity {
+  display: block;
+  width: 72px;
+}
+
+.manual-shopping-quantity input {
+  width: 100%;
+  min-height: 34px;
+  padding: 5px;
+  border-radius: 7px;
+  text-align: right;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 .day-plan {
@@ -449,32 +506,10 @@ tbody tr:hover {
   margin-bottom: 18px;
 }
 
-.shopping-header-actions {
+.planner-header-actions {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.live-sync-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.live-sync-status > span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #a7b2aa;
-}
-
-.live-sync-status.connected > span {
-  background: #42a66b;
-  box-shadow: 0 0 0 3px rgba(66, 166, 107, 0.13);
 }
 
 .summary-card {
@@ -489,6 +524,65 @@ tbody tr:hover {
 .summary-card strong {
   display: block;
   font-size: 1.5rem;
+}
+
+.category-cost-card {
+  min-width: min(100%, 300px);
+  flex: 1 1 300px;
+}
+
+.category-cost-card > span {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.category-cost-chart {
+  display: grid;
+  gap: 7px;
+}
+
+.category-cost-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) minmax(55px, 1.4fr) auto;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.72rem;
+}
+
+.category-cost-label {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-cost-track {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #edf1eb;
+}
+
+.category-cost-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8fc98e, #2f795e);
+}
+
+.category-cost-row strong {
+  font-size: 0.72rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.category-cost-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .shopping-list {
@@ -1206,9 +1300,10 @@ tbody tr:hover {
     flex-direction: column;
   }
 
-  .shopping-header-actions {
+  .planner-header-actions {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 }
 
@@ -1487,6 +1582,11 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+.planner-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .randomize-week > span {
   font-size: 1.05rem;
 }
@@ -1542,6 +1642,7 @@ tbody tr:hover {
   margin-left: auto;
   border-color: #f3dfdd;
   padding: 0;
+  justify-self: end;
 }
 
 .manual-shopping-items .planner-icon-action svg {
@@ -1833,7 +1934,8 @@ body[data-theme="dark"] .analytics-stat-icon {
 }
 
 body[data-theme="dark"] .rank-bar,
-body[data-theme="dark"] .weekly-chart-track {
+body[data-theme="dark"] .weekly-chart-track,
+body[data-theme="dark"] .category-cost-track {
   background: #2a3930;
 }
 

@@ -244,6 +244,7 @@ const ingredientCategoryInput = document.getElementById('ingredient-category');
 const ingredientUnitInput = document.getElementById('ingredient-unit');
 const ingredientPriceInput = document.getElementById('ingredient-price');
 const resetIngredientButton = document.getElementById('reset-ingredient-form');
+const newIngredientButton = document.getElementById('new-ingredient');
 
 const dishForm = document.getElementById('dish-form');
 const dishTableBody = document.getElementById('dish-table-body');
@@ -255,6 +256,7 @@ const dishIngredientQuantityInput = document.getElementById('dish-ingredient-qua
 const dishIngredientList = document.getElementById('dish-ingredient-list');
 const addDishIngredientButton = document.getElementById('add-dish-ingredient');
 const resetDishButton = document.getElementById('reset-dish-form');
+const newDishButton = document.getElementById('new-dish');
 
 const plannerGrid = document.getElementById('planner-grid');
 const plannerKpi = document.getElementById('planner-kpi');
@@ -266,7 +268,6 @@ const mealRanking = document.getElementById('meal-ranking');
 const historicalRankingList = document.getElementById('historical-ranking');
 const shoppingList = document.getElementById('shopping-list');
 const shoppingSummary = document.getElementById('shopping-summary');
-const liveSyncStatus = document.getElementById('live-sync-status');
 const clearWeeklyPlanButton = document.getElementById('clear-weekly-plan');
 const dishSortSelect = document.getElementById('dish-sort');
 
@@ -415,21 +416,15 @@ function bindNavigation() {
 
 function bindDefaultValues() {
   resetIngredientButton.addEventListener('click', () => {
-    ingredientForm.reset();
-    ingredientIdInput.value = '';
-    ingredientCategoryInput.value = 'Vegetable';
-    ingredientUnitInput.value = 'kg';
-    ingredientPriceInput.value = 0;
+    resetIngredientForm();
   });
 
   resetDishButton.addEventListener('click', () => {
-    dishForm.reset();
-    dishIdInput.value = '';
-    currentDishIngredients = [];
-    renderDishIngredientList();
-    updateDishIngredientOptions();
+    resetDishForm();
   });
 
+  newIngredientButton.addEventListener('click', openNewIngredientForm);
+  newDishButton.addEventListener('click', openNewDishForm);
   dishSortSelect.addEventListener('change', renderDishes);
   ingredientSearchInput.addEventListener('input', renderIngredients);
   dishSearchInput.addEventListener('input', renderDishes);
@@ -453,6 +448,36 @@ function bindDefaultValues() {
     dishIngredientQuantityInput.value = 1;
     renderDishIngredientList();
   });
+}
+
+function resetIngredientForm() {
+  ingredientForm.reset();
+  ingredientIdInput.value = '';
+  ingredientCategoryInput.value = 'Vegetable';
+  ingredientUnitInput.value = 'kg';
+  ingredientPriceInput.value = 0;
+  ingredientForm.hidden = true;
+}
+
+function openNewIngredientForm() {
+  resetIngredientForm();
+  ingredientForm.hidden = false;
+  ingredientNameInput.focus();
+}
+
+function resetDishForm() {
+  dishForm.reset();
+  dishIdInput.value = '';
+  currentDishIngredients = [];
+  renderDishIngredientList();
+  updateDishIngredientOptions();
+  dishForm.hidden = true;
+}
+
+function openNewDishForm() {
+  resetDishForm();
+  dishForm.hidden = false;
+  dishNameInput.focus();
 }
 
 function bindIngredientForm() {
@@ -500,12 +525,8 @@ function bindIngredientForm() {
       });
     });
 
+    resetIngredientForm();
     renderAll();
-    ingredientForm.reset();
-    ingredientIdInput.value = '';
-    ingredientCategoryInput.value = 'Vegetable';
-    ingredientUnitInput.value = 'kg';
-    ingredientPriceInput.value = 0;
   }));
 }
 
@@ -637,6 +658,7 @@ function populateIngredientForm(id) {
   ingredientUnitInput.value = ingredient.unit;
   ingredientPriceInput.value = ingredient.price;
   document.querySelector('.nav-btn[data-section="ingredients"]').click();
+  ingredientForm.hidden = false;
   ingredientNameInput.focus();
 }
 
@@ -650,7 +672,7 @@ async function removeIngredient(id) {
   }
 
   state.ingredients = state.ingredients.filter((ingredient) => ingredient.id !== id);
-  state.manualShoppingItems = state.manualShoppingItems.filter((ingredientId) => ingredientId !== id);
+  state.manualShoppingItems = state.manualShoppingItems.filter((item) => item.ingredientId !== id);
 
   state.dishes = state.dishes.map((dish) => ({
     ...dish,
@@ -757,6 +779,7 @@ function populateDishForm(id) {
   }));
   renderDishIngredientList();
   document.querySelector('.nav-btn[data-section="dishes"]').click();
+  dishForm.hidden = false;
   dishNameInput.focus();
 }
 
@@ -863,8 +886,8 @@ function renderPlanner() {
         .map((ingredient) => `<option value="${escapeHtml(ingredient.id)}">${escapeHtml(ingredient.name)}</option>`)
         .join('');
       const selectedItems = state.manualShoppingItems
-        .map((ingredientId) => findIngredientById(ingredientId))
-        .filter((ingredient) => ingredient?.category === category);
+        .map((item) => ({ ...item, ingredient: findIngredientById(item.ingredientId) }))
+        .filter((item) => item.ingredient?.category === category);
       return `
         <section class="manual-shopping-bucket">
           <h4>${getCategoryIcon(category)} ${escapeHtml(category)}</h4>
@@ -876,9 +899,13 @@ function renderPlanner() {
             </select>
           </label>
           <ul class="manual-shopping-items">
-            ${selectedItems.length ? selectedItems.map((ingredient) => `
+            ${selectedItems.length ? selectedItems.map(({ ingredient, quantity }) => `
               <li>
-                <span>${escapeHtml(ingredient.name)} <small>1 ${escapeHtml(ingredient.unit || 'unit')}</small></span>
+                <span>${escapeHtml(ingredient.name)}</span>
+                <label class="manual-shopping-quantity">
+                  <span class="visually-hidden">Quantity of ${escapeHtml(ingredient.name)}</span>
+                  <input type="number" min="0.1" step="0.1" value="${Number(quantity)}" data-manual-shopping-quantity="${escapeHtml(ingredient.id)}" aria-label="Quantity of ${escapeHtml(ingredient.name)}" />
+                </label>
                 <button type="button" class="danger planner-icon-action" data-remove-manual-shopping="${escapeHtml(ingredient.id)}" aria-label="Remove ${escapeHtml(ingredient.name)} from the weekly planner" title="Remove ingredient">${renderActionIcon('remove')}</button>
               </li>
             `).join('') : '<li class="empty">No ingredients added</li>'}
@@ -902,6 +929,13 @@ function renderPlanner() {
 
     manualShoppingPicker.querySelectorAll('[data-remove-manual-shopping]').forEach((button) => {
       button.addEventListener('click', () => runAppAction(() => removeIndividualShoppingIngredient(button.dataset.removeManualShopping)));
+    });
+
+    manualShoppingPicker.querySelectorAll('[data-manual-shopping-quantity]').forEach((input) => {
+      input.addEventListener('change', () => runAppAction(() => updateIndividualShoppingQuantity(
+        input.dataset.manualShoppingQuantity,
+        input.value
+      )));
     });
   }
 
@@ -962,23 +996,46 @@ async function addIndividualShoppingIngredient(ingredientId) {
   if (!ingredient) {
     return;
   }
-  if (state.manualShoppingItems.includes(ingredientId)) {
+  if (state.manualShoppingItems.some((item) => item.ingredientId === ingredientId)) {
     showMessage(appStatus, `${ingredient.name} is already on the shopping list.`);
     return;
   }
 
   const { error } = await supabaseClient.from('shopping_items').upsert({
     user_id: sharedOwnerId,
-    ingredient_id: ingredientId
+    ingredient_id: ingredientId,
+    quantity: 1
   }, { onConflict: 'ingredient_id', ignoreDuplicates: true });
   if (error) {
     throw error;
   }
 
-  state.manualShoppingItems.push(ingredientId);
+  state.manualShoppingItems.push({ ingredientId, quantity: 1 });
   renderPlanner();
   renderShoppingList();
   showMessage(appStatus, `${ingredient.name} added to the shopping list.`);
+}
+
+async function updateIndividualShoppingQuantity(ingredientId, value) {
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error('Ingredient quantity must be greater than zero.');
+  }
+
+  const { error } = await supabaseClient
+    .from('shopping_items')
+    .update({ quantity })
+    .eq('ingredient_id', ingredientId);
+  if (error) {
+    throw error;
+  }
+
+  const item = state.manualShoppingItems.find((entry) => entry.ingredientId === ingredientId);
+  if (item) {
+    item.quantity = quantity;
+  }
+  renderPlanner();
+  renderShoppingList();
 }
 
 async function removeIndividualShoppingIngredient(ingredientId) {
@@ -990,7 +1047,7 @@ async function removeIndividualShoppingIngredient(ingredientId) {
     throw error;
   }
 
-  state.manualShoppingItems = state.manualShoppingItems.filter((id) => id !== ingredientId);
+  state.manualShoppingItems = state.manualShoppingItems.filter((item) => item.ingredientId !== ingredientId);
   renderPlanner();
   renderShoppingList();
 }
@@ -1171,7 +1228,7 @@ function renderShoppingList() {
     });
   });
 
-  state.manualShoppingItems.forEach((ingredientId) => {
+  state.manualShoppingItems.forEach(({ ingredientId, quantity }) => {
     const ingredient = findIngredientById(ingredientId);
     if (!ingredient) {
       return;
@@ -1184,7 +1241,7 @@ function renderShoppingList() {
       unit: ingredient.unit || 'unit',
       price: ingredient.price || 0
     };
-    current.quantity += 1;
+    current.quantity += Number(quantity) || 0;
     current.category = ingredient.category || current.category;
     current.unit = ingredient.unit || current.unit;
     current.price = ingredient.price || current.price;
@@ -1199,8 +1256,16 @@ function renderShoppingList() {
     categories.get(value.category).push(value);
   });
 
-  const totalItems = [...ingredientMap.values()].reduce((sum, item) => sum + item.quantity, 0);
+  const totalItems = ingredientMap.size;
+  const checkedItems = [...ingredientMap.values()].filter((item) =>
+    Boolean(state.shoppingChecks[`${item.category}|${item.name}`])
+  ).length;
   const totalEstimatedCost = [...ingredientMap.values()].reduce((sum, item) => sum + item.quantity * item.price, 0);
+  const categoryCosts = [...categories.entries()].map(([category, items]) => ({
+    category,
+    cost: items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+  }));
+  const highestCategoryCost = Math.max(...categoryCosts.map((item) => item.cost), 0);
 
   shoppingList.classList.toggle('two-row', categories.size > 2);
   if (categories.size > 2) {
@@ -1212,15 +1277,26 @@ function renderShoppingList() {
   shoppingSummary.innerHTML = `
     <div class="summary-card">
       <span>Items</span>
-      <strong>${Math.round(totalItems).toLocaleString()}</strong>
-    </div>
-    <div class="summary-card">
-      <span>Categories</span>
-      <strong>${categories.size}</strong>
+      <strong>${checkedItems}/${totalItems}</strong>
     </div>
     <div class="summary-card">
       <span>Estimated cost</span>
       <strong>kr. ${Math.round(totalEstimatedCost).toLocaleString()}</strong>
+    </div>
+    <div class="summary-card category-cost-card">
+      <span>Cost by category</span>
+      <div class="category-cost-chart" role="img" aria-label="Estimated cost by shopping category">
+        ${categoryCosts.length ? categoryCosts.map(({ category, cost }) => {
+          const barWidth = highestCategoryCost ? Math.max((cost / highestCategoryCost) * 100, 2) : 0;
+          return `
+            <div class="category-cost-row" aria-label="${escapeHtml(category)}: kr. ${Math.round(cost).toLocaleString()}">
+              <span class="category-cost-label">${escapeHtml(category)}</span>
+              <span class="category-cost-track"><span style="width: ${barWidth}%"></span></span>
+              <strong>kr. ${Math.round(cost).toLocaleString()}</strong>
+            </div>
+          `;
+        }).join('') : '<span class="category-cost-empty">No category costs yet</span>'}
+      </div>
     </div>
   `;
 
@@ -1274,7 +1350,6 @@ function renderShoppingList() {
       state.shoppingChecks[key] = checked;
     }));
   });
-
 }
 
 async function clearWeeklyPlan() {
@@ -1425,10 +1500,16 @@ function subscribeToSharedUpdates() {
     if (!row?.ingredient_id) {
       return;
     }
-    state.manualShoppingItems = state.manualShoppingItems.filter((id) => id !== row.ingredient_id);
+    state.manualShoppingItems = state.manualShoppingItems.filter((item) => item.ingredientId !== row.ingredient_id);
     if (payload.eventType !== 'DELETE') {
-      if (!state.manualShoppingItems.includes(row.ingredient_id)) {
-        state.manualShoppingItems.push(row.ingredient_id);
+      const currentItem = state.manualShoppingItems.find((item) => item.ingredientId === row.ingredient_id);
+      if (currentItem) {
+        currentItem.quantity = Number(row.quantity) || 1;
+      } else {
+        state.manualShoppingItems.push({
+          ingredientId: row.ingredient_id,
+          quantity: Number(row.quantity) || 1
+        });
       }
     }
     renderPlanner();
@@ -1444,16 +1525,8 @@ function subscribeToSharedUpdates() {
   });
 
   realtimeChannel.subscribe((status, error) => {
-    if (status === 'SUBSCRIBED') {
-      liveSyncStatus.classList.add('connected');
-      liveSyncStatus.innerHTML = '<span aria-hidden="true"></span>Live sync on';
-    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      liveSyncStatus.classList.remove('connected');
-      liveSyncStatus.innerHTML = '<span aria-hidden="true"></span>Live sync unavailable';
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
       showMessage(appStatus, error?.message || 'Live updates are unavailable. Reload the page to reconnect.', true);
-    } else if (status === 'CLOSED') {
-      liveSyncStatus.classList.remove('connected');
-      liveSyncStatus.innerHTML = '<span aria-hidden="true"></span>Live sync disconnected';
     }
   });
 }
@@ -1498,7 +1571,7 @@ async function loadUserState(userId, initializeIfNeeded = true) {
     supabaseClient.from('dish_ingredients').select('dish_id,ingredient_id,quantity'),
     supabaseClient.from('meal_plan').select('day,dish_id'),
     supabaseClient.from('shopping_checks').select('check_key,checked'),
-    supabaseClient.from('shopping_items').select('ingredient_id'),
+    supabaseClient.from('shopping_items').select('ingredient_id,quantity'),
     supabaseClient.from('shared_settings').select('owner_id').eq('id', 1).maybeSingle()
   ]);
   const results = [ingredientsResult, dishesResult, linesResult, planResult, checksResult, shoppingItemsResult, settingsResult];
@@ -1553,7 +1626,10 @@ async function loadUserState(userId, initializeIfNeeded = true) {
       ingredients: linesByDishId.get(dish.id) || []
     })),
     plan,
-    manualShoppingItems: shoppingItemsResult.data.map((item) => item.ingredient_id),
+    manualShoppingItems: shoppingItemsResult.data.map((item) => ({
+      ingredientId: item.ingredient_id,
+      quantity: Number(item.quantity) || 1
+    })),
     shoppingChecks: Object.fromEntries(
       checksResult.data.map((check) => [check.check_key, check.checked])
     )
