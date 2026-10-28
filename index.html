@@ -7,18 +7,45 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <section id="auth-panel" class="auth-panel">
+      <h1>Meal Plan</h1>
+      <p>Sign in to access your meal plan.</p>
+      <form id="auth-form" class="card-form">
+        <label>
+          <span>Email</span>
+          <input id="auth-email" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          <span>Password</span>
+          <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="primary">Sign in</button>
+          <button type="button" id="sign-up" class="secondary">Create account</button>
+        </div>
+      </form>
+      <p id="auth-status" class="status-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <div class="app-shell" hidden>
       <aside class="sidebar">
-        <h1>Meal Plan</h1>
+        <a class="brand" href="#" aria-label="Meal Plan home">
+          <span class="brand-mark" aria-hidden="true">M</span>
+          <span>Meal Plan</span>
+        </a>
+        <p id="signed-in-user" class="signed-in-user"></p>
+        <button type="button" id="sign-out" class="secondary sign-out">Sign out</button>
         <nav>
           <button class="nav-btn active" data-section="ingredients">Ingredients</button>
           <button class="nav-btn" data-section="dishes">Dishes</button>
           <button class="nav-btn" data-section="planner">Weekly Planner</button>
           <button class="nav-btn" data-section="shopping">Shopping List</button>
+          <button class="nav-btn" data-section="analytics">Analytics</button>
         </nav>
       </aside>
 
       <main class="content">
+        <p id="app-status" class="status-message" role="status" aria-live="polite"></p>
         <section id="ingredients" class="panel active">
           <div class="section-header">
             <h2>Ingredients</h2>
@@ -118,6 +145,9 @@
               <thead>
                 <tr>
                   <th>Dish</th>
+                  <th>Type</th>
+                  <th>Serves</th>
+                  <th>Cost</th>
                   <th>Ingredients</th>
                   <th>Actions</th>
                 </tr>
@@ -136,10 +166,47 @@
           <div id="planner-grid" class="planner-grid"></div>
         </section>
 
+        <section id="analytics" class="panel">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">YOUR WEEK AT A GLANCE</p>
+              <h2>Meal analytics</h2>
+              <p>See which dishes are planned most often this week.</p>
+            </div>
+          </div>
+          <div id="analytics-summary" class="analytics-summary"></div>
+          <section class="analytics-card">
+            <div class="analytics-card-heading">
+              <div>
+                <p class="eyebrow">WEEKLY RANKING</p>
+                <h3>Meal popularity</h3>
+              </div>
+              <span class="ranking-caption">Historical picks and this week's plan</span>
+            </div>
+            <div class="ranking-columns">
+              <div class="ranking-section">
+                <h4>Most planned overall</h4>
+                <p>From the spreadsheet's Times column</p>
+                <ol id="historical-ranking" class="meal-ranking"></ol>
+              </div>
+              <div class="ranking-section">
+                <h4>This week</h4>
+                <p>Live count from your shared planner</p>
+                <ol id="meal-ranking" class="meal-ranking"></ol>
+              </div>
+            </div>
+          </section>
+        </section>
+
         <section id="shopping" class="panel">
           <div class="section-header">
             <h2>Shopping List</h2>
-            <button id="generate-shopping-list" class="primary">Generate list</button>
+            <div class="shopping-header-actions">
+              <span id="live-sync-status" class="live-sync-status" role="status" aria-live="polite">
+                <span aria-hidden="true"></span>Connecting to shared list
+              </span>
+              <button id="generate-shopping-list" class="primary">Generate list</button>
+            </div>
           </div>
           <div id="shopping-summary" class="shopping-summary"></div>
           <div id="shopping-list" class="shopping-list"></div>
@@ -147,6 +214,8 @@
       </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
