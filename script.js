@@ -226,6 +226,9 @@ const authEmailInput = document.getElementById('auth-email');
 const authPasswordInput = document.getElementById('auth-password');
 const authStatus = document.getElementById('auth-status');
 const signUpButton = document.getElementById('sign-up');
+const themeToggle = document.getElementById('theme-toggle');
+const themeToggleIcon = document.getElementById('theme-toggle-icon');
+const themeToggleLabel = document.getElementById('theme-toggle-label');
 const appShell = document.querySelector('.app-shell');
 const appStatus = document.getElementById('app-status');
 const signedInUser = document.getElementById('signed-in-user');
@@ -252,13 +255,16 @@ const addDishIngredientButton = document.getElementById('add-dish-ingredient');
 const resetDishButton = document.getElementById('reset-dish-form');
 
 const plannerGrid = document.getElementById('planner-grid');
+const plannerKpi = document.getElementById('planner-kpi');
 const analyticsSummary = document.getElementById('analytics-summary');
+const weeklyChart = document.getElementById('weekly-chart');
 const mealRanking = document.getElementById('meal-ranking');
 const historicalRankingList = document.getElementById('historical-ranking');
 const shoppingList = document.getElementById('shopping-list');
 const shoppingSummary = document.getElementById('shopping-summary');
-const generateShoppingListButton = document.getElementById('generate-shopping-list');
 const liveSyncStatus = document.getElementById('live-sync-status');
+const clearWeeklyPlanButton = document.getElementById('clear-weekly-plan');
+const dishSortSelect = document.getElementById('dish-sort');
 
 let currentDishIngredients = [];
 let currentUserId = null;
@@ -266,9 +272,26 @@ let sharedOwnerId = null;
 let realtimeChannel = null;
 let sharedRefreshTimer = null;
 
+const savedTheme = window.localStorage.getItem('mealPlanTheme');
+if (savedTheme !== 'light') {
+  document.body.dataset.theme = 'dark';
+}
+updateThemeToggle();
+
 init();
 
 async function init() {
+  themeToggle.addEventListener('click', () => {
+    const theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+    window.localStorage.setItem('mealPlanTheme', theme);
+    if (theme === 'dark') {
+      document.body.dataset.theme = theme;
+    } else {
+      delete document.body.dataset.theme;
+    }
+    updateThemeToggle();
+  });
+
   authForm.addEventListener('submit', (event) => runAuthAction(async () => {
     event.preventDefault();
     const { error } = await supabaseClient.auth.signInWithPassword({
@@ -310,6 +333,7 @@ async function init() {
   bindIngredientForm();
   bindDishForm();
   bindDefaultValues();
+  clearWeeklyPlanButton.addEventListener('click', clearWeeklyPlan);
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(() => handleAuthSession(session), 0);
@@ -322,6 +346,14 @@ async function init() {
     }
     await handleAuthSession(data.session);
   });
+}
+
+function updateThemeToggle() {
+  const isDark = document.body.dataset.theme === 'dark';
+  themeToggle.setAttribute('aria-pressed', String(isDark));
+  themeToggle.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} mode`);
+  themeToggleIcon.textContent = isDark ? '☀' : '☾';
+  themeToggleLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
 }
 
 async function handleAuthSession(session) {
@@ -405,6 +437,8 @@ function bindDefaultValues() {
     updateDishIngredientOptions();
   });
 
+  dishSortSelect.addEventListener('change', renderDishes);
+
   addDishIngredientButton.addEventListener('click', () => {
     const ingredientId = dishIngredientSelect.value;
     const ingredient = findIngredientById(ingredientId);
@@ -423,11 +457,6 @@ function bindDefaultValues() {
 
     dishIngredientQuantityInput.value = 1;
     renderDishIngredientList();
-  });
-
-  generateShoppingListButton.addEventListener('click', () => {
-    renderShoppingList();
-    document.querySelector('.nav-btn[data-section="shopping"]').click();
   });
 }
 
@@ -556,7 +585,7 @@ function updateIngredientCategoryOptions() {
   ])];
 
   ingredientCategoryInput.innerHTML = categories
-    .map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
+    .map((category) => `<option value="${escapeHtml(category)}">${getCategoryIcon(category)} ${escapeHtml(category)}</option>`)
     .join('');
   ingredientCategoryInput.value = categories.includes(selectedCategory)
     ? selectedCategory
@@ -570,13 +599,13 @@ function renderIngredients() {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${escapeHtml(ingredient.name)}</td>
-      <td>${escapeHtml(ingredient.category)}</td>
+      <td>${renderCategoryBadge(ingredient.category)}</td>
       <td>${escapeHtml(ingredient.unit)}</td>
       <td>kr. ${Number(ingredient.price).toFixed(2)}</td>
       <td>
         <div class="table-actions">
-          <button type="button" class="secondary" data-edit-ingredient="${ingredient.id}">Edit</button>
-          <button type="button" class="danger" data-remove-ingredient="${ingredient.id}">Remove</button>
+          <button type="button" class="secondary icon-action" data-edit-ingredient="${ingredient.id}" aria-label="Edit ${escapeHtml(ingredient.name)}" title="Edit ${escapeHtml(ingredient.name)}">${renderActionIcon('edit')}</button>
+          <button type="button" class="danger icon-action" data-remove-ingredient="${ingredient.id}" aria-label="Remove ${escapeHtml(ingredient.name)}" title="Remove ${escapeHtml(ingredient.name)}">${renderActionIcon('remove')}</button>
         </div>
       </td>
     `;
@@ -637,23 +666,55 @@ async function removeIngredient(id) {
 function renderDishes() {
   dishTableBody.innerHTML = '';
 
-  state.dishes.forEach((dish) => {
+  const sortMode = dishSortSelect.value;
+  const weeklyCounts = getWeeklyDishCounts(true);
+  const getRankingCount = (dish) => sortMode === 'week'
+    ? weeklyCounts.get(dish.id) || 0
+    : Number(dish.historical_times) || 0;
+  const sortedDishes = [...state.dishes].sort((left, right) => {
+    const leftIsLeftovers = isLeftoversDish(left);
+    const rightIsLeftovers = isLeftoversDish(right);
+    if (sortMode !== 'name' && leftIsLeftovers !== rightIsLeftovers) {
+      return leftIsLeftovers ? 1 : -1;
+    }
+    if (sortMode !== 'name') {
+      const countDifference = getRankingCount(right) - getRankingCount(left);
+      if (countDifference) {
+        return countDifference;
+      }
+    }
+    return left.name.localeCompare(right.name);
+  });
+  let visibleRank = 0;
+
+  sortedDishes.forEach((dish) => {
     const row = document.createElement('tr');
     const rating = Number(dish.rating) || 0;
     const ratingLabel = rating ? '★'.repeat(rating) : '';
+    const rankingCount = getRankingCount(dish);
+    const rankedDish = sortMode !== 'name' && rankingCount > 0 && !isLeftoversDish(dish);
+    if (rankedDish) {
+      visibleRank += 1;
+    }
+    const ranking = rankedDish
+      ? `<span class="dish-rank" aria-label="${sortMode === 'week' ? 'This week' : 'Historical'} rank ${visibleRank}; ${rankingCount} ${rankingCount === 1 ? 'plan' : 'plans'}">#${visibleRank}<span>${rankingCount} ${rankingCount === 1 ? 'plan' : 'plans'}</span></span>`
+      : '';
     row.innerHTML = `
       <td>
-        <strong>${escapeHtml(dish.name)}</strong>
+        <div class="dish-name-cell">
+          <strong>${escapeHtml(dish.name)}</strong>
+          ${ranking}
+        </div>
         ${ratingLabel ? `<span class="dish-rating" aria-label="${rating} out of 5 stars">${ratingLabel}</span>` : ''}
       </td>
-      <td>${escapeHtml(dish.dish_type || '—')}</td>
+      <td>${dish.dish_type ? renderCategoryBadge(dish.dish_type) : '—'}</td>
       <td>${Number(dish.servings) || 1}</td>
       <td>${dish.total_price === null || dish.total_price === undefined ? '—' : `kr. ${Number(dish.total_price).toFixed(2)}`}</td>
       <td>${dish.ingredients.map((ingredient) => `${escapeHtml(ingredient.name || 'Ingredient')} (${Number(ingredient.quantity)})`).join(', ') || 'No ingredients yet'}</td>
       <td>
         <div class="table-actions">
-          <button type="button" class="secondary" data-edit-dish="${dish.id}">Edit</button>
-          <button type="button" class="danger" data-remove-dish="${dish.id}">Remove</button>
+          <button type="button" class="secondary icon-action" data-edit-dish="${dish.id}" aria-label="Edit ${escapeHtml(dish.name)}" title="Edit ${escapeHtml(dish.name)}">${renderActionIcon('edit')}</button>
+          <button type="button" class="danger icon-action" data-remove-dish="${dish.id}" aria-label="Remove ${escapeHtml(dish.name)}" title="Remove ${escapeHtml(dish.name)}">${renderActionIcon('remove')}</button>
         </div>
       </td>
     `;
@@ -743,6 +804,14 @@ function updateDishIngredientOptions() {
 
 function renderPlanner() {
   plannerGrid.innerHTML = '';
+  const plannedMealCount = Object.values(state.plan).reduce((total, meals) => total + meals.length, 0);
+  const plannedDayCount = dayNames.filter((day) => (state.plan[day] || []).length > 0).length;
+  plannerKpi.innerHTML = `
+    <span class="planner-kpi-icon" aria-hidden="true">🍽️</span>
+    <span class="planner-kpi-label">Meals planned</span>
+    <strong>${plannedMealCount}</strong>
+    <span class="planner-kpi-note">${plannedDayCount} of 7 days planned</span>
+  `;
 
   dayNames.forEach((day) => {
     const planWrapper = document.createElement('div');
@@ -760,12 +829,12 @@ function renderPlanner() {
           <option value="">Choose a dish</option>
           ${dishOptions}
         </select>
-        <button type="button" class="secondary" data-add-day-dish="${day}">Add</button>
+        <button type="button" class="secondary planner-icon-action" data-add-day-dish="${day}" aria-label="Add selected meal to ${day}" title="Add selected meal to ${day}">${renderActionIcon('add')}</button>
       </div>
       <ul class="chosen-meals">
         ${chosenMeals.length ? chosenMeals.map((dishId) => {
           const dish = state.dishes.find((item) => item.id === dishId);
-          return `<li><span>${dish ? escapeHtml(dish.name) : 'Unknown dish'}</span><button type="button" class="danger" data-remove-day-dish="${day}|${dishId}">Remove</button></li>`;
+          return `<li><span>${dish ? escapeHtml(dish.name) : 'Unknown dish'}</span><button type="button" class="danger planner-icon-action" data-remove-day-dish="${day}|${dishId}" aria-label="Remove ${dish ? escapeHtml(dish.name) : 'meal'} from ${day}" title="Remove meal">${renderActionIcon('remove')}</button></li>`;
         }).join('') : '<li class="empty">No meals planned</li>'}
       </ul>
     `;
@@ -799,6 +868,8 @@ function renderPlanner() {
       }
 
       renderPlanner();
+      renderDishes();
+      renderShoppingList();
     }));
   });
 
@@ -815,6 +886,8 @@ function renderPlanner() {
       }
       state.plan[day] = (state.plan[day] || []).filter((item) => item !== dishId);
       renderPlanner();
+      renderDishes();
+      renderShoppingList();
     }));
   });
 
@@ -822,19 +895,19 @@ function renderPlanner() {
 }
 
 function renderMealAnalytics() {
-  const dishCounts = new Map();
+  const dishCounts = getWeeklyDishCounts(true);
+  const dailyCounts = Object.fromEntries(dayNames.map((day) => [day, 0]));
   let plannedMealCount = 0;
   let plannedDayCount = 0;
 
   dayNames.forEach((day) => {
-    const plannedDishes = state.plan[day] || [];
+    const plannedDishes = (state.plan[day] || [])
+      .filter((dishId) => !isLeftoversDish(state.dishes.find((dish) => dish.id === dishId)));
     if (plannedDishes.length) {
       plannedDayCount += 1;
     }
-    plannedDishes.forEach((dishId) => {
-      plannedMealCount += 1;
-      dishCounts.set(dishId, (dishCounts.get(dishId) || 0) + 1);
-    });
+    dailyCounts[day] = plannedDishes.length;
+    plannedMealCount += plannedDishes.length;
   });
 
   const weeklyRanking = [...dishCounts.entries()]
@@ -846,23 +919,24 @@ function renderMealAnalytics() {
     .sort((left, right) => right.count - left.count || left.dish.name.localeCompare(right.dish.name));
   const historicalRanking = state.dishes
     .map((dish) => ({ dish, count: Number(dish.historical_times) || 0 }))
-    .filter((item) => item.count > 0)
+    .filter((item) => item.count > 0 && !isLeftoversDish(item.dish))
     .sort((left, right) => right.count - left.count || left.dish.name.localeCompare(right.dish.name));
   const mostPlanned = historicalRanking[0];
   const totalHistoricalPlans = historicalRanking.reduce((sum, item) => sum + item.count, 0);
 
+  renderWeeklyChart(dailyCounts);
   analyticsSummary.innerHTML = `
     <article class="analytics-stat">
       <span class="analytics-stat-icon" aria-hidden="true">▦</span>
       <span class="analytics-stat-label">Historical plans</span>
       <strong>${totalHistoricalPlans.toLocaleString()}</strong>
-      <span class="analytics-stat-note">from your spreadsheet</span>
+      <span class="analytics-stat-note">from your spreadsheet · leftovers excluded</span>
     </article>
     <article class="analytics-stat">
       <span class="analytics-stat-icon" aria-hidden="true">◷</span>
       <span class="analytics-stat-label">Meals this week</span>
       <strong>${plannedMealCount}</strong>
-      <span class="analytics-stat-note">${plannedDayCount} ${plannedDayCount === 1 ? 'day' : 'days'} covered</span>
+      <span class="analytics-stat-note">${plannedDayCount} ${plannedDayCount === 1 ? 'day' : 'days'} covered · leftovers excluded</span>
     </article>
     <article class="analytics-stat analytics-stat-featured">
       <span class="analytics-stat-icon" aria-hidden="true">★</span>
@@ -874,6 +948,27 @@ function renderMealAnalytics() {
 
   renderMealRanking(historicalRanking, historicalRankingList, 'No historical meal counts were imported.');
   renderMealRanking(weeklyRanking, mealRanking, 'Your weekly ranking will appear when you plan a dish.');
+}
+
+function renderWeeklyChart(dailyCounts) {
+  const highestCount = Math.max(1, ...Object.values(dailyCounts));
+  weeklyChart.setAttribute(
+    'aria-label',
+    `Planned meals by day, excluding leftovers: ${dayNames.map((day) => `${day} ${dailyCounts[day]}`).join(', ')}`
+  );
+  weeklyChart.innerHTML = dayNames.map((day) => {
+    const count = dailyCounts[day];
+    const height = count ? Math.max(8, Math.round((count / highestCount) * 100)) : 4;
+    return `
+      <div class="weekly-chart-column">
+        <strong class="weekly-chart-count">${count}</strong>
+        <div class="weekly-chart-track">
+          <span class="weekly-chart-bar" style="height: ${height}%" aria-hidden="true"></span>
+        </div>
+        <span class="weekly-chart-day">${escapeHtml(day.slice(0, 3))}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderMealRanking(ranking, target, emptyMessage) {
@@ -935,6 +1030,13 @@ function renderShoppingList() {
   const totalItems = [...ingredientMap.values()].reduce((sum, item) => sum + item.quantity, 0);
   const totalEstimatedCost = [...ingredientMap.values()].reduce((sum, item) => sum + item.quantity * item.price, 0);
 
+  shoppingList.classList.toggle('two-row', categories.size > 2);
+  if (categories.size > 2) {
+    shoppingList.style.setProperty('--shopping-columns', Math.ceil(categories.size / 2));
+  } else {
+    shoppingList.style.removeProperty('--shopping-columns');
+  }
+
   shoppingSummary.innerHTML = `
     <div class="summary-card">
       <span>Items</span>
@@ -951,7 +1053,7 @@ function renderShoppingList() {
   `;
 
   if (!ingredientMap.size) {
-    shoppingList.innerHTML = '<div class="empty">Add dishes to your weekly planner to generate a shopping list.</div>';
+    shoppingList.innerHTML = '<div class="empty">Add dishes to your weekly planner and your shopping list will appear here.</div>';
     return;
   }
 
@@ -961,7 +1063,7 @@ function renderShoppingList() {
         const key = `${category}|${item.name}`;
         const checked = Boolean(state.shoppingChecks[key]);
         return `
-          <li>
+          <li class="shopping-item-row${checked ? ' is-checked' : ''}">
             <label class="shopping-item-check">
               <input type="checkbox" data-shopping-check="${escapeHtml(key)}" ${checked ? 'checked' : ''} />
               <span>${escapeHtml(item.name)}</span>
@@ -974,7 +1076,7 @@ function renderShoppingList() {
 
     return `
       <div class="category-group">
-        <h3>${escapeHtml(category)}</h3>
+        <h3>${renderCategoryBadge(category)}</h3>
         <ul>${list}</ul>
       </div>
     `;
@@ -985,17 +1087,125 @@ function renderShoppingList() {
   shoppingList.querySelectorAll('[data-shopping-check]').forEach((checkbox) => {
     checkbox.addEventListener('change', (event) => runAppAction(async () => {
       const key = event.target.dataset.shoppingCheck;
+      const checked = event.target.checked;
+      event.target.closest('.shopping-item-row').classList.toggle('is-checked', checked);
       const { error } = await supabaseClient.from('shopping_checks').upsert({
         user_id: sharedOwnerId,
         check_key: key,
-        checked: event.target.checked
+        checked
       }, { onConflict: 'check_key' });
       if (error) {
         throw error;
       }
-      state.shoppingChecks[key] = event.target.checked;
+      state.shoppingChecks[key] = checked;
     }));
   });
+}
+
+async function clearWeeklyPlan() {
+  const confirmed = window.confirm(
+    'Clear all planned meals and shopping-list checkmarks? Your dishes, ingredients, and historical rankings will be kept.'
+  );
+  if (!confirmed) {
+    return;
+  }
+
+  await runAppAction(async () => {
+    const { error: planError } = await supabaseClient
+      .from('meal_plan')
+      .delete()
+      .neq('day', '');
+    if (planError) {
+      throw planError;
+    }
+
+    const { error: checksError } = await supabaseClient
+      .from('shopping_checks')
+      .delete()
+      .neq('check_key', '');
+    if (checksError) {
+      throw checksError;
+    }
+
+    state.plan = Object.fromEntries(dayNames.map((day) => [day, []]));
+    state.shoppingChecks = {};
+    renderAll();
+  });
+}
+
+function getWeeklyDishCounts(excludeLeftovers = false) {
+  const counts = new Map();
+  dayNames.forEach((day) => {
+    (state.plan[day] || []).forEach((dishId) => {
+      const dish = state.dishes.find((item) => item.id === dishId);
+      if (dish && (!excludeLeftovers || !isLeftoversDish(dish))) {
+        counts.set(dishId, (counts.get(dishId) || 0) + 1);
+      }
+    });
+  });
+  return counts;
+}
+
+function isLeftoversDish(dish) {
+  return Boolean(dish && /^leftovers?$/i.test(dish.name.trim()));
+}
+
+function renderCategoryBadge(category) {
+  const icon = getCategoryIcon(category);
+  return `<span class="category-badge"><span aria-hidden="true">${icon}</span>${escapeHtml(category)}</span>`;
+}
+
+function renderActionIcon(action) {
+  if (action === 'edit') {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
+  }
+  if (action === 'add') {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>';
+}
+
+function getCategoryIcon(category) {
+  const normalized = String(category || '').trim().toLowerCase();
+  const icons = {
+    baby: '🍼',
+    'can food': '🥫',
+    'canned food': '🥫',
+    'clean & toilettries': '🧼',
+    'clean & toiletries': '🧼',
+    cleaning: '🧼',
+    dessert: '🍰',
+    dressing: '🥗',
+    drinks: '🥤',
+    'fake meat': '🌱',
+    fruit: '🍎',
+    'fruit & veggies': '🥬',
+    'frutas y verduras': '🥬',
+    vegetable: '🥬',
+    vegetables: '🥬',
+    protein: '🍗',
+    meat: '🍗',
+    dairy: '🥛',
+    lacteos: '🥛',
+    bakery: '🥖',
+    bread: '🥖',
+    pantry: '🫙',
+    frozen: '❄️',
+    grains: '🍚',
+    grain: '🍚',
+    international: '🌍',
+    legumes: '🫘',
+    legums: '🫘',
+    meds: '💊',
+    misc: '🧺',
+    other: '🛒',
+    premade: '🍱',
+    seeds: '🌻',
+    snacks: '🍿',
+    spices: '🧂',
+    toppings: '✨'
+  };
+  return icons[normalized] || '🍽️';
 }
 
 function subscribeToSharedUpdates() {

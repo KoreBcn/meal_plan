@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark mode" aria-pressed="false">
+      <span id="theme-toggle-icon" aria-hidden="true">☾</span>
+      <span id="theme-toggle-label">Dark mode</span>
+    </button>
     <section id="auth-panel" class="auth-panel">
       <h1>Meal Plan</h1>
       <p>Sign in to access your meal plan.</p>
@@ -140,6 +144,16 @@
             </div>
           </form>
 
+          <div class="collection-toolbar">
+            <label for="dish-sort">
+              <span>Sort dishes</span>
+              <select id="dish-sort">
+                <option value="historical">Historical ranking</option>
+                <option value="week">This week’s ranking</option>
+                <option value="name">Name (A–Z)</option>
+              </select>
+            </label>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -163,6 +177,7 @@
             <p>Select dishes for each day and build your week.</p>
           </div>
 
+          <div id="planner-kpi" class="planner-kpi" aria-live="polite"></div>
           <div id="planner-grid" class="planner-grid"></div>
         </section>
 
@@ -175,6 +190,16 @@
             </div>
           </div>
           <div id="analytics-summary" class="analytics-summary"></div>
+          <section class="weekly-chart-card" aria-labelledby="weekly-chart-title">
+            <div class="weekly-chart-heading">
+              <div>
+                <p class="eyebrow">YOUR PLAN, VISUALIZED</p>
+                <h3 id="weekly-chart-title">Meals across the week</h3>
+              </div>
+              <span class="ranking-caption">Leftovers excluded</span>
+            </div>
+            <div id="weekly-chart" class="weekly-chart" role="img" aria-label="Planned meals by day, excluding leftovers"></div>
+          </section>
           <section class="analytics-card">
             <div class="analytics-card-heading">
               <div>
@@ -186,7 +211,7 @@
             <div class="ranking-columns">
               <div class="ranking-section">
                 <h4>Most planned overall</h4>
-                <p>From the spreadsheet's Times column</p>
+                <p>From the spreadsheet's Times column · leftovers excluded</p>
                 <ol id="historical-ranking" class="meal-ranking"></ol>
               </div>
               <div class="ranking-section">
@@ -205,7 +230,7 @@
               <span id="live-sync-status" class="live-sync-status" role="status" aria-live="polite">
                 <span aria-hidden="true"></span>Connecting to shared list
               </span>
-              <button id="generate-shopping-list" class="primary">Generate list</button>
+              <button type="button" id="clear-weekly-plan" class="danger">Start over</button>
             </div>
           </div>
           <div id="shopping-summary" class="shopping-summary"></div>
