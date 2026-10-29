@@ -4,9 +4,10 @@ A shared meal planner backed by Supabase. Household members see the same ingredi
 
 ## Features
 
-- Manage ingredients and reusable dishes
-- Plan meals across the week
-- Add individual ingredients by category directly from the weekly planner
+- Manage ingredients and reusable dishes, including dish type, serving count, star ratings, and automatically calculated ingredient costs
+- Sort dishes alphabetically, by type, by cost, or by historical ranking
+- Plan meals across the week using searchable dish pickers and rate dishes from one to five stars
+- Search for individual ingredients in the weekly planner and manage them in their category buckets
 - Generate a categorized shopping list with estimated costs
 - View spreadsheet history and live weekly meal rankings
 - Share one meal plan with authorized household accounts

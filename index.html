@@ -73,16 +73,20 @@
               </label>
               <label>
                 <span>Category</span>
-                <select id="ingredient-category">
-                  <option value="Fruit">Fruit</option>
-                  <option value="Vegetable">Vegetable</option>
-                  <option value="Protein">Protein</option>
-                  <option value="Dairy">Dairy</option>
-                  <option value="Bakery">Bakery</option>
-                  <option value="Pantry">Pantry</option>
-                  <option value="Frozen">Frozen</option>
-                  <option value="Other">Other</option>
-                </select>
+                <div class="ingredient-category-picker">
+                  <select id="ingredient-category" class="visually-hidden"></select>
+                  <button type="button" id="ingredient-category-trigger" class="ingredient-category-trigger" aria-label="Choose a category" aria-haspopup="listbox" aria-controls="ingredient-category-menu" aria-expanded="false">
+                    <span id="ingredient-category-value">Vegetable</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10.8" cy="10.8" r="6.3"></circle>
+                      <path d="m15.5 15.5 4.2 4.2"></path>
+                    </svg>
+                  </button>
+                  <div id="ingredient-category-menu" class="ingredient-category-menu" hidden>
+                    <input id="ingredient-category-search" type="search" placeholder="Search categories" aria-label="Search categories" autocomplete="off" />
+                    <div id="ingredient-category-options" class="ingredient-category-options" role="listbox" aria-label="Categories"></div>
+                  </div>
+                </div>
               </label>
               <label>
                 <span>Unit</span>
@@ -137,23 +141,53 @@
                 <span>Dish name</span>
                 <input id="dish-name" type="text" placeholder="e.g. Chicken Stir Fry" required />
               </label>
+              <label>
+                <span>Type of dish</span>
+                <input id="dish-type" type="text" placeholder="e.g. Main, soup, dessert" />
+              </label>
+              <label>
+                <span>Serves</span>
+                <input id="dish-servings" type="number" min="1" step="1" value="1" required />
+              </label>
             </div>
 
             <div class="dish-ingredient-builder">
               <h3>Add ingredients to dish</h3>
-              <div class="field-grid compact">
-                <label>
-                  <span>Ingredient</span>
-                  <select id="dish-ingredient-select"></select>
+              <div class="dish-ingredient-controls">
+                <div class="dish-ingredient-picker">
+                  <select id="dish-ingredient-select" aria-label="Ingredient" class="visually-hidden"></select>
+                  <button type="button" id="dish-ingredient-picker-trigger" class="dish-ingredient-picker-trigger" aria-label="Choose an ingredient" aria-haspopup="listbox" aria-controls="dish-ingredient-picker-menu" aria-expanded="false">
+                    <span id="dish-ingredient-picker-value">Select ingredient</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10.8" cy="10.8" r="6.3"></circle>
+                      <path d="m15.5 15.5 4.2 4.2"></path>
+                    </svg>
+                  </button>
+                  <div id="dish-ingredient-picker-menu" class="dish-ingredient-picker-menu" hidden>
+                    <input id="dish-ingredient-search" type="search" placeholder="Search ingredients" aria-label="Search ingredients" autocomplete="off" />
+                    <div id="dish-ingredient-picker-options" class="dish-ingredient-picker-options" role="listbox" aria-label="Ingredients"></div>
+                  </div>
+                </div>
+                <label class="dish-ingredient-quantity">
+                  <span class="visually-hidden">Quantity</span>
+                  <input id="dish-ingredient-quantity" type="number" min="0.001" step="0.001" value="1" aria-label="Ingredient quantity" />
                 </label>
-                <label>
-                  <span>Quantity</span>
-                  <input id="dish-ingredient-quantity" type="number" min="0" step="0.1" value="1" />
-                </label>
-                <button type="button" id="add-dish-ingredient" class="secondary">Add ingredient</button>
+                <button type="button" id="add-dish-ingredient" class="secondary dish-ingredient-add" aria-label="Add ingredient" title="Add ingredient"><span aria-hidden="true">+</span></button>
               </div>
               <ul id="dish-ingredient-list" class="ingredient-list"></ul>
+              <p id="dish-cost-preview" class="dish-cost-preview" aria-live="polite"></p>
             </div>
+
+            <fieldset class="dish-rating-field">
+              <legend>Rating</legend>
+              <div class="dish-rating-options">
+                <label><input type="radio" name="dish-rating" value="1" /><span aria-hidden="true">★</span><span class="visually-hidden">1 star</span></label>
+                <label><input type="radio" name="dish-rating" value="2" /><span aria-hidden="true">★</span><span class="visually-hidden">2 stars</span></label>
+                <label><input type="radio" name="dish-rating" value="3" /><span aria-hidden="true">★</span><span class="visually-hidden">3 stars</span></label>
+                <label><input type="radio" name="dish-rating" value="4" /><span aria-hidden="true">★</span><span class="visually-hidden">4 stars</span></label>
+                <label><input type="radio" name="dish-rating" value="5" /><span aria-hidden="true">★</span><span class="visually-hidden">5 stars</span></label>
+              </div>
+            </fieldset>
 
             <div class="form-actions">
               <button type="submit" class="primary">Save dish</button>
@@ -167,11 +201,13 @@
               <input id="dish-search" type="search" placeholder="Search by name or ingredient" />
             </label>
             <label for="dish-sort">
-              <span>Sort dishes</span>
-              <select id="dish-sort">
+              <span>Sort by</span>
+              <select id="dish-sort" data-searchable="false">
                 <option value="historical">Historical ranking</option>
-                <option value="week">This week’s ranking</option>
-                <option value="name">Name (A–Z)</option>
+                <option value="name">Dish name (A–Z)</option>
+                <option value="type">Type (A–Z)</option>
+                <option value="cost-asc">Cost (low to high)</option>
+                <option value="cost-desc">Cost (high to low)</option>
               </select>
             </label>
           </div>

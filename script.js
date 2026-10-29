@@ -241,6 +241,11 @@ const ingredientSearchInput = document.getElementById('ingredient-search');
 const ingredientIdInput = document.getElementById('ingredient-id');
 const ingredientNameInput = document.getElementById('ingredient-name');
 const ingredientCategoryInput = document.getElementById('ingredient-category');
+const ingredientCategoryTrigger = document.getElementById('ingredient-category-trigger');
+const ingredientCategoryValue = document.getElementById('ingredient-category-value');
+const ingredientCategoryMenu = document.getElementById('ingredient-category-menu');
+const ingredientCategorySearchInput = document.getElementById('ingredient-category-search');
+const ingredientCategoryOptions = document.getElementById('ingredient-category-options');
 const ingredientUnitInput = document.getElementById('ingredient-unit');
 const ingredientPriceInput = document.getElementById('ingredient-price');
 const resetIngredientButton = document.getElementById('reset-ingredient-form');
@@ -249,11 +254,20 @@ const newIngredientButton = document.getElementById('new-ingredient');
 const dishForm = document.getElementById('dish-form');
 const dishTableBody = document.getElementById('dish-table-body');
 const dishSearchInput = document.getElementById('dish-search');
+const dishSortSelect = document.getElementById('dish-sort');
 const dishIdInput = document.getElementById('dish-id');
 const dishNameInput = document.getElementById('dish-name');
+const dishTypeInput = document.getElementById('dish-type');
+const dishServingsInput = document.getElementById('dish-servings');
 const dishIngredientSelect = document.getElementById('dish-ingredient-select');
+const dishIngredientPickerTrigger = document.getElementById('dish-ingredient-picker-trigger');
+const dishIngredientPickerValue = document.getElementById('dish-ingredient-picker-value');
+const dishIngredientPickerMenu = document.getElementById('dish-ingredient-picker-menu');
+const dishIngredientSearchInput = document.getElementById('dish-ingredient-search');
+const dishIngredientPickerOptions = document.getElementById('dish-ingredient-picker-options');
 const dishIngredientQuantityInput = document.getElementById('dish-ingredient-quantity');
 const dishIngredientList = document.getElementById('dish-ingredient-list');
+const dishCostPreview = document.getElementById('dish-cost-preview');
 const addDishIngredientButton = document.getElementById('add-dish-ingredient');
 const resetDishButton = document.getElementById('reset-dish-form');
 const newDishButton = document.getElementById('new-dish');
@@ -269,7 +283,6 @@ const historicalRankingList = document.getElementById('historical-ranking');
 const shoppingList = document.getElementById('shopping-list');
 const shoppingSummary = document.getElementById('shopping-summary');
 const clearWeeklyPlanButton = document.getElementById('clear-weekly-plan');
-const dishSortSelect = document.getElementById('dish-sort');
 
 let currentDishIngredients = [];
 let currentUserId = null;
@@ -422,19 +435,82 @@ function bindDefaultValues() {
   resetDishButton.addEventListener('click', () => {
     resetDishForm();
   });
+  dishForm.querySelectorAll('input[name="dish-rating"]').forEach((input) => {
+    input.addEventListener('change', updateDishRatingDisplay);
+  });
+  dishIngredientPickerTrigger.addEventListener('click', () => {
+    const shouldOpen = dishIngredientPickerMenu.hidden;
+    dishIngredientPickerMenu.hidden = !shouldOpen;
+    dishIngredientPickerTrigger.setAttribute('aria-expanded', String(shouldOpen));
+    if (shouldOpen) {
+      dishIngredientSearchInput.value = '';
+      renderDishIngredientPickerOptions();
+      dishIngredientSearchInput.focus();
+    }
+  });
+  dishIngredientSearchInput.addEventListener('input', renderDishIngredientPickerOptions);
+  dishIngredientSearchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeDishIngredientPicker();
+      dishIngredientPickerTrigger.focus();
+    }
+  });
+  dishIngredientPickerOptions.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-dish-ingredient-id]');
+    if (!option) {
+      return;
+    }
+    dishIngredientSelect.value = option.dataset.dishIngredientId;
+    dishIngredientPickerValue.textContent = option.textContent.trim();
+    closeDishIngredientPicker();
+    dishIngredientPickerTrigger.focus();
+  });
+  ingredientCategoryTrigger.addEventListener('click', () => {
+    const shouldOpen = ingredientCategoryMenu.hidden;
+    ingredientCategoryMenu.hidden = !shouldOpen;
+    ingredientCategoryTrigger.setAttribute('aria-expanded', String(shouldOpen));
+    if (shouldOpen) {
+      ingredientCategorySearchInput.value = '';
+      renderIngredientCategoryOptions();
+      ingredientCategorySearchInput.focus();
+    }
+  });
+  ingredientCategorySearchInput.addEventListener('input', renderIngredientCategoryOptions);
+  ingredientCategorySearchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeIngredientCategoryPicker();
+      ingredientCategoryTrigger.focus();
+    }
+  });
+  ingredientCategoryOptions.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-ingredient-category]');
+    if (!option) {
+      return;
+    }
+    ingredientCategoryInput.value = option.dataset.ingredientCategory;
+    updateIngredientCategoryPickerValue();
+    closeIngredientCategoryPicker();
+    ingredientCategoryTrigger.focus();
+  });
 
   newIngredientButton.addEventListener('click', openNewIngredientForm);
   newDishButton.addEventListener('click', openNewDishForm);
-  dishSortSelect.addEventListener('change', renderDishes);
   ingredientSearchInput.addEventListener('input', renderIngredients);
   dishSearchInput.addEventListener('input', renderDishes);
+  dishSortSelect.addEventListener('change', renderDishes);
+  enhanceSearchableSelects(document);
 
   addDishIngredientButton.addEventListener('click', () => {
     const ingredientId = dishIngredientSelect.value;
     const ingredient = findIngredientById(ingredientId);
     const quantity = Number(dishIngredientQuantityInput.value) || 0;
 
-    if (!ingredient || quantity <= 0) {
+    if (!dishIngredientQuantityInput.checkValidity()) {
+      dishIngredientQuantityInput.reportValidity();
+      return;
+    }
+
+    if (!ingredient || !Number.isFinite(quantity) || quantity <= 0) {
       return;
     }
 
@@ -450,10 +526,65 @@ function bindDefaultValues() {
   });
 }
 
+function enhanceSearchableSelects(root) {
+  root.querySelectorAll('select').forEach((select) => {
+    if (select === dishIngredientSelect || select === ingredientCategoryInput || select.dataset.searchable === 'false') {
+      return;
+    }
+
+    let wrapper = select.closest('.searchable-select');
+    let searchInput = wrapper?.querySelector('.searchable-select-input');
+
+    if (!wrapper) {
+      wrapper = document.createElement('div');
+      wrapper.className = 'searchable-select';
+      searchInput = document.createElement('input');
+      searchInput.type = 'search';
+      searchInput.className = 'searchable-select-input';
+      const fieldLabel = select.getAttribute('aria-label')
+        || select.labels?.[0]?.querySelector('span')?.textContent.trim()
+        || 'options';
+      searchInput.placeholder = `Search ${fieldLabel.toLowerCase()}`;
+      searchInput.autocomplete = 'off';
+      searchInput.setAttribute('aria-label', `Search ${fieldLabel}`);
+      select.parentNode.insertBefore(wrapper, select);
+      wrapper.append(searchInput, select);
+    }
+
+    if (select.dataset.searchableSelectBound) {
+      return;
+    }
+    select.dataset.searchableSelectBound = 'true';
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+      [...select.options].forEach((option) => {
+        option.hidden = Boolean(option.value) && !option.textContent.toLowerCase().includes(query);
+      });
+    });
+    select.addEventListener('change', () => {
+      searchInput.value = '';
+      [...select.options].forEach((option) => {
+        option.hidden = false;
+      });
+    });
+  });
+}
+
+function updateDishRatingDisplay() {
+  const selectedRating = Number(dishForm.querySelector('input[name="dish-rating"]:checked')?.value) || 0;
+  dishForm.querySelectorAll('.dish-rating-options label').forEach((label) => {
+    const rating = Number(label.querySelector('input').value);
+    label.classList.toggle('is-selected', rating <= selectedRating);
+  });
+}
+
 function resetIngredientForm() {
   ingredientForm.reset();
   ingredientIdInput.value = '';
   ingredientCategoryInput.value = 'Vegetable';
+  updateIngredientCategoryPickerValue();
+  ingredientCategorySearchInput.value = '';
+  closeIngredientCategoryPicker();
   ingredientUnitInput.value = 'kg';
   ingredientPriceInput.value = 0;
   ingredientForm.hidden = true;
@@ -468,7 +599,9 @@ function openNewIngredientForm() {
 function resetDishForm() {
   dishForm.reset();
   dishIdInput.value = '';
+  dishServingsInput.value = 1;
   currentDishIngredients = [];
+  updateDishRatingDisplay();
   renderDishIngredientList();
   updateDishIngredientOptions();
   dishForm.hidden = true;
@@ -535,20 +668,23 @@ function bindDishForm() {
     event.preventDefault();
 
     const name = dishNameInput.value.trim();
-    if (!name || !currentDishIngredients.length) {
+    const servings = Number(dishServingsInput.value);
+    if (!name || !currentDishIngredients.length || !Number.isInteger(servings) || servings < 1) {
       return;
     }
 
     const previousDish = state.dishes.find((dish) => dish.id === dishIdInput.value);
+    const selectedRating = dishForm.querySelector('input[name="dish-rating"]:checked');
+    const totalPrice = calculateDishCost(currentDishIngredients);
     const payload = {
       id: dishIdInput.value || crypto.randomUUID(),
       name,
-      dish_type: previousDish?.dish_type || '',
-      servings: previousDish?.servings || 1,
-      total_price: previousDish?.total_price ?? null,
-      price_per_person: previousDish?.price_per_person ?? null,
+      dish_type: dishTypeInput.value.trim(),
+      servings,
+      total_price: totalPrice,
+      price_per_person: totalPrice === null ? null : Math.round((totalPrice / servings + Number.EPSILON) * 100) / 100,
       historical_times: previousDish?.historical_times || 0,
-      rating: previousDish?.rating ?? null,
+      rating: selectedRating ? Number(selectedRating.value) : null,
       source_of_recipe: previousDish?.source_of_recipe || '',
       recipe_notes: previousDish?.recipe_notes || '',
       future_food_projects: previousDish?.future_food_projects || '',
@@ -572,6 +708,20 @@ function bindDishForm() {
       throw error;
     }
 
+    const { error: ratingError } = await supabaseClient
+      .from('dishes')
+      .update({
+        rating: payload.rating,
+        dish_type: payload.dish_type,
+        servings: payload.servings,
+        total_price: payload.total_price,
+        price_per_person: payload.price_per_person
+      })
+      .eq('id', payload.id);
+    if (ratingError) {
+      throw ratingError;
+    }
+
     const index = state.dishes.findIndex((dish) => dish.id === payload.id);
     if (index >= 0) {
       state.dishes[index] = payload;
@@ -591,6 +741,7 @@ function renderAll() {
   renderPlanner();
   renderShoppingList();
   updateDishIngredientOptions();
+  renderDishCostPreview();
 }
 
 function updateIngredientCategoryOptions() {
@@ -606,6 +757,35 @@ function updateIngredientCategoryOptions() {
   ingredientCategoryInput.value = categories.includes(selectedCategory)
     ? selectedCategory
     : 'Vegetable';
+  ingredientCategorySearchInput.value = '';
+  updateIngredientCategoryPickerValue();
+  renderIngredientCategoryOptions();
+}
+
+function updateIngredientCategoryPickerValue() {
+  const category = ingredientCategoryInput.value;
+  ingredientCategoryValue.textContent = category
+    ? `${getCategoryIcon(category)} ${category}`
+    : 'Select category';
+}
+
+function renderIngredientCategoryOptions() {
+  const query = ingredientCategorySearchInput.value.trim().toLocaleLowerCase();
+  const categories = [...ingredientCategoryInput.options].filter((option) =>
+    option.textContent.toLocaleLowerCase().includes(query)
+  );
+  ingredientCategoryOptions.innerHTML = categories.length
+    ? categories.map((option) => `
+      <button type="button" class="ingredient-category-option" role="option" aria-selected="${option.value === ingredientCategoryInput.value}" data-ingredient-category="${escapeHtml(option.value)}">
+        ${escapeHtml(option.textContent)}
+      </button>
+    `).join('')
+    : '<span class="ingredient-category-empty">No matching categories.</span>';
+}
+
+function closeIngredientCategoryPicker() {
+  ingredientCategoryMenu.hidden = true;
+  ingredientCategoryTrigger.setAttribute('aria-expanded', 'false');
 }
 
 function renderIngredients() {
@@ -655,6 +835,7 @@ function populateIngredientForm(id) {
   ingredientIdInput.value = ingredient.id;
   ingredientNameInput.value = ingredient.name;
   ingredientCategoryInput.value = ingredient.category;
+  updateIngredientCategoryPickerValue();
   ingredientUnitInput.value = ingredient.unit;
   ingredientPriceInput.value = ingredient.price;
   document.querySelector('.nav-btn[data-section="ingredients"]').click();
@@ -694,21 +875,41 @@ function renderDishes() {
   const searchTerm = dishSearchInput.value.trim().toLocaleLowerCase();
 
   const sortMode = dishSortSelect.value;
-  const weeklyCounts = getWeeklyDishCounts(true);
-  const getRankingCount = (dish) => sortMode === 'week'
-    ? weeklyCounts.get(dish.id) || 0
-    : Number(dish.historical_times) || 0;
+  const getRankingCount = (dish) => Number(dish.historical_times) || 0;
   const sortedDishes = [...state.dishes].sort((left, right) => {
+    if (sortMode === 'name') {
+      return left.name.localeCompare(right.name);
+    }
+    if (sortMode === 'type') {
+      const leftType = left.dish_type || '';
+      const rightType = right.dish_type || '';
+      if (!leftType || !rightType) {
+        if (!leftType && rightType) return 1;
+        if (!rightType && leftType) return -1;
+      }
+      const typeComparison = leftType.localeCompare(rightType, undefined, { sensitivity: 'base' });
+      return typeComparison || left.name.localeCompare(right.name);
+    }
+    if (sortMode === 'cost-asc' || sortMode === 'cost-desc') {
+      const leftCost = calculateDishCost(left.ingredients);
+      const rightCost = calculateDishCost(right.ingredients);
+      if (leftCost === null || rightCost === null) {
+        if (leftCost === null && rightCost !== null) return 1;
+        if (rightCost === null && leftCost !== null) return -1;
+      } else if (leftCost !== rightCost) {
+        return sortMode === 'cost-asc' ? leftCost - rightCost : rightCost - leftCost;
+      }
+      return left.name.localeCompare(right.name);
+    }
+
     const leftIsLeftovers = isLeftoversDish(left);
     const rightIsLeftovers = isLeftoversDish(right);
-    if (sortMode !== 'name' && leftIsLeftovers !== rightIsLeftovers) {
+    if (leftIsLeftovers !== rightIsLeftovers) {
       return leftIsLeftovers ? 1 : -1;
     }
-    if (sortMode !== 'name') {
-      const countDifference = getRankingCount(right) - getRankingCount(left);
-      if (countDifference) {
-        return countDifference;
-      }
+    const countDifference = getRankingCount(right) - getRankingCount(left);
+    if (countDifference) {
+      return countDifference;
     }
     return left.name.localeCompare(right.name);
   }).filter((dish) => `${dish.name} ${dish.dish_type || ''} ${dish.ingredients.map((ingredient) => ingredient.name || '').join(' ')}`
@@ -721,7 +922,7 @@ function renderDishes() {
     const rating = Number(dish.rating) || 0;
     const ratingLabel = rating ? '★'.repeat(rating) : '';
     const rankingCount = getRankingCount(dish);
-    const rankedDish = sortMode !== 'name' && rankingCount > 0 && !isLeftoversDish(dish);
+    const rankedDish = sortMode === 'historical' && rankingCount > 0 && !isLeftoversDish(dish);
     if (rankedDish) {
       visibleRank += 1;
     }
@@ -738,7 +939,7 @@ function renderDishes() {
       </td>
       <td data-label="Type">${dish.dish_type ? renderCategoryBadge(dish.dish_type) : '—'}</td>
       <td data-label="Serves">${Number(dish.servings) || 1}</td>
-      <td data-label="Cost">${dish.total_price === null || dish.total_price === undefined ? '—' : `kr. ${Number(dish.total_price).toFixed(2)}`}</td>
+      <td data-label="Cost">${formatDishCost(dish)}</td>
       <td data-label="Ingredients">${dish.ingredients.map((ingredient) => `${escapeHtml(ingredient.name || 'Ingredient')} (${Number(ingredient.quantity)})`).join(', ') || 'No ingredients yet'}</td>
       <td data-label="Actions">
         <div class="table-actions">
@@ -772,6 +973,16 @@ function populateDishForm(id) {
 
   dishIdInput.value = dish.id;
   dishNameInput.value = dish.name;
+  dishTypeInput.value = dish.dish_type || '';
+  dishServingsInput.value = Number(dish.servings) || 1;
+  dishForm.querySelectorAll('input[name="dish-rating"]').forEach((input) => {
+    input.checked = false;
+  });
+  const ratingInput = dishForm.querySelector(`input[name="dish-rating"][value="${Number(dish.rating) || ''}"]`);
+  if (ratingInput) {
+    ratingInput.checked = true;
+  }
+  updateDishRatingDisplay();
   currentDishIngredients = dish.ingredients.map((ingredient) => ({
     ingredientId: ingredient.ingredientId,
     name: ingredient.name,
@@ -804,6 +1015,7 @@ async function removeDish(id) {
 function renderDishIngredientList() {
   if (!currentDishIngredients.length) {
     dishIngredientList.innerHTML = '<li class="empty">No ingredients added yet</li>';
+    renderDishCostPreview();
     return;
   }
 
@@ -823,6 +1035,43 @@ function renderDishIngredientList() {
       renderDishIngredientList();
     });
   });
+  renderDishCostPreview();
+}
+
+function findIngredientForDishLine(line) {
+  return findIngredientById(line.ingredientId)
+    || state.ingredients.find((ingredient) =>
+      ingredient.name.toLocaleLowerCase() === String(line.name || '').toLocaleLowerCase()
+    );
+}
+
+function calculateDishCost(lines) {
+  let total = 0;
+  for (const line of lines) {
+    const ingredient = findIngredientForDishLine(line);
+    const quantity = Number(line.quantity);
+    if (!ingredient || !Number.isFinite(Number(ingredient.price)) || !Number.isFinite(quantity) || quantity <= 0) {
+      return null;
+    }
+    total += Number(ingredient.price) * quantity;
+  }
+  return Math.round((total + Number.EPSILON) * 100) / 100;
+}
+
+function renderDishCostPreview() {
+  if (!currentDishIngredients.length) {
+    dishCostPreview.textContent = 'Estimated total cost will appear when ingredients are added.';
+    return;
+  }
+  const cost = calculateDishCost(currentDishIngredients);
+  dishCostPreview.textContent = cost === null
+    ? 'Estimated total cost: unavailable'
+    : `Estimated total cost: kr. ${cost.toFixed(2)}`;
+}
+
+function formatDishCost(dish) {
+  const cost = calculateDishCost(dish.ingredients);
+  return cost === null ? '—' : `kr. ${cost.toFixed(2)}`;
 }
 
 function updateDishIngredientOptions() {
@@ -834,6 +1083,27 @@ function updateDishIngredientOptions() {
   if (state.ingredients.length) {
     dishIngredientSelect.value = state.ingredients[0].id;
   }
+  dishIngredientPickerValue.textContent = state.ingredients[0]?.name || 'Select ingredient';
+  renderDishIngredientPickerOptions();
+}
+
+function renderDishIngredientPickerOptions() {
+  const query = dishIngredientSearchInput.value.trim().toLocaleLowerCase();
+  const matchingIngredients = state.ingredients.filter((ingredient) =>
+    ingredient.name.toLocaleLowerCase().includes(query)
+  );
+  dishIngredientPickerOptions.innerHTML = matchingIngredients.length
+    ? matchingIngredients.map((ingredient) => `
+      <button type="button" class="dish-ingredient-picker-option" role="option" aria-selected="${ingredient.id === dishIngredientSelect.value}" data-dish-ingredient-id="${escapeHtml(ingredient.id)}">
+        ${escapeHtml(ingredient.name)}
+      </button>
+    `).join('')
+    : '<span class="dish-ingredient-picker-empty">No matching ingredients.</span>';
+}
+
+function closeDishIngredientPicker() {
+  dishIngredientPickerMenu.hidden = true;
+  dishIngredientPickerTrigger.setAttribute('aria-expanded', 'false');
 }
 
 function renderPlanner() {
@@ -859,11 +1129,10 @@ function renderPlanner() {
     planWrapper.innerHTML = `
       <h3>${day}</h3>
       <div class="day-controls">
-        <select data-day-select="${day}">
-          <option value="">Choose a dish</option>
+        <select data-day-select="${day}" aria-label="Add a meal to ${day}">
+          <option value=""></option>
           ${dishOptions}
         </select>
-        <button type="button" class="secondary planner-icon-action" data-add-day-dish="${day}" aria-label="Add selected meal to ${day}" title="Add selected meal to ${day}">${renderActionIcon('add')}</button>
       </div>
       <ul class="chosen-meals">
         ${chosenMeals.length ? chosenMeals.map((dishId) => {
@@ -874,99 +1143,20 @@ function renderPlanner() {
     `;
 
     plannerGrid.appendChild(planWrapper);
+    enhancePlannerMealPicker(planWrapper, day);
   });
 
-  const categories = [...new Set(state.ingredients.map((ingredient) => ingredient.category).filter(Boolean))];
-  if (!categories.length) {
-    manualShoppingPicker.innerHTML = '<p class="empty">Add ingredients to see categories here.</p>';
-  } else {
-    manualShoppingPicker.innerHTML = categories.map((category) => {
-      const options = state.ingredients
-        .filter((ingredient) => ingredient.category === category)
-        .map((ingredient) => `<option value="${escapeHtml(ingredient.id)}">${escapeHtml(ingredient.name)}</option>`)
-        .join('');
-      const selectedItems = state.manualShoppingItems
-        .map((item) => ({ ...item, ingredient: findIngredientById(item.ingredientId) }))
-        .filter((item) => item.ingredient?.category === category);
-      return `
-        <section class="manual-shopping-bucket">
-          <h4>${getCategoryIcon(category)} ${escapeHtml(category)}</h4>
-          <label>
-            <span>Add ingredient</span>
-            <select data-manual-shopping-category="${escapeHtml(category)}">
-              <option value="">Choose an ingredient</option>
-              ${options}
-            </select>
-          </label>
-          <ul class="manual-shopping-items">
-            ${selectedItems.length ? selectedItems.map(({ ingredient, quantity }) => `
-              <li>
-                <span>${escapeHtml(ingredient.name)}</span>
-                <label class="manual-shopping-quantity">
-                  <span class="visually-hidden">Quantity of ${escapeHtml(ingredient.name)}</span>
-                  <input type="number" min="0.1" step="0.1" value="${Number(quantity)}" data-manual-shopping-quantity="${escapeHtml(ingredient.id)}" aria-label="Quantity of ${escapeHtml(ingredient.name)}" />
-                </label>
-                <button type="button" class="danger planner-icon-action" data-remove-manual-shopping="${escapeHtml(ingredient.id)}" aria-label="Remove ${escapeHtml(ingredient.name)} from the weekly planner" title="Remove ingredient">${renderActionIcon('remove')}</button>
-              </li>
-            `).join('') : '<li class="empty">No ingredients added</li>'}
-          </ul>
-        </section>
-      `;
-    }).join('');
+  renderManualShoppingPicker();
 
-    manualShoppingPicker.querySelectorAll('[data-manual-shopping-category]').forEach((select) => {
-      select.addEventListener('change', () => {
-        const ingredientId = select.value;
-        if (!ingredientId) {
-          return;
-        }
-        runAppAction(async () => {
-          await addIndividualShoppingIngredient(ingredientId);
-          select.value = '';
-        });
-      });
-    });
-
-    manualShoppingPicker.querySelectorAll('[data-remove-manual-shopping]').forEach((button) => {
-      button.addEventListener('click', () => runAppAction(() => removeIndividualShoppingIngredient(button.dataset.removeManualShopping)));
-    });
-
-    manualShoppingPicker.querySelectorAll('[data-manual-shopping-quantity]').forEach((input) => {
-      input.addEventListener('change', () => runAppAction(() => updateIndividualShoppingQuantity(
-        input.dataset.manualShoppingQuantity,
-        input.value
-      )));
-    });
-  }
-
-  plannerGrid.querySelectorAll('[data-add-day-dish]').forEach((button) => {
-    button.addEventListener('click', () => runAppAction(async () => {
-      const day = button.dataset.addDayDish;
-      const select = plannerGrid.querySelector(`[data-day-select="${day}"]`);
+  plannerGrid.querySelectorAll('[data-day-select]').forEach((select) => {
+    select.addEventListener('change', () => runAppAction(async () => {
+      const day = select.dataset.daySelect;
       const dishId = select.value;
       if (!dishId) {
         return;
       }
 
-      if (!state.plan[day]) {
-        state.plan[day] = [];
-      }
-
-      if (!state.plan[day].includes(dishId)) {
-        const { error } = await supabaseClient.from('meal_plan').upsert({
-          user_id: sharedOwnerId,
-          day,
-          dish_id: dishId
-        }, { onConflict: 'day,dish_id', ignoreDuplicates: true });
-        if (error) {
-          throw error;
-        }
-        state.plan[day].push(dishId);
-      }
-
-      renderPlanner();
-      renderDishes();
-      renderShoppingList();
+      await addDishToDay(day, dishId);
     }));
   });
 
@@ -989,6 +1179,206 @@ function renderPlanner() {
   });
 
   renderMealAnalytics();
+}
+
+function enhancePlannerMealPicker(planWrapper, day) {
+  const select = planWrapper.querySelector('[data-day-select]');
+  const picker = document.createElement('div');
+  picker.className = 'meal-picker';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'meal-picker-trigger';
+  trigger.setAttribute('aria-label', `Search and add a meal to ${day}`);
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="10.8" cy="10.8" r="6.3"></circle>
+      <path d="m15.5 15.5 4.2 4.2"></path>
+    </svg>
+  `;
+
+  const menu = document.createElement('div');
+  menu.className = 'meal-picker-menu';
+  menu.hidden = true;
+  const searchInput = document.createElement('input');
+  searchInput.type = 'search';
+  searchInput.className = 'meal-picker-search';
+  searchInput.placeholder = 'Search meals';
+  searchInput.setAttribute('aria-label', `Search meals for ${day}`);
+  searchInput.autocomplete = 'off';
+  const options = document.createElement('div');
+  options.className = 'meal-picker-options';
+  options.setAttribute('role', 'listbox');
+  menu.append(searchInput, options);
+  picker.append(trigger, menu, select);
+  select.classList.add('visually-hidden');
+  planWrapper.querySelector('.day-controls').append(picker);
+
+  const renderOptions = () => {
+    const query = searchInput.value.trim().toLocaleLowerCase();
+    const matchingOptions = [...select.options].filter((option) =>
+      option.value && option.textContent.toLocaleLowerCase().includes(query)
+    );
+    options.innerHTML = matchingOptions.length
+      ? matchingOptions.map((option) => `
+        <button type="button" class="meal-picker-option" role="option" aria-selected="false" data-meal-id="${escapeHtml(option.value)}">
+          ${escapeHtml(option.textContent)}
+        </button>
+      `).join('')
+      : `<span class="meal-picker-empty">${select.options.length > 1 ? 'No matching meals.' : 'No meals available.'}</span>`;
+  };
+
+  const closeMenu = () => {
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+  };
+
+  trigger.addEventListener('click', () => {
+    const shouldOpen = menu.hidden;
+    menu.hidden = !shouldOpen;
+    trigger.setAttribute('aria-expanded', String(shouldOpen));
+    if (shouldOpen) {
+      searchInput.value = '';
+      renderOptions();
+      searchInput.focus();
+    }
+  });
+
+  searchInput.addEventListener('input', renderOptions);
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeMenu();
+      trigger.focus();
+    }
+  });
+
+  options.addEventListener('click', (event) => {
+    const optionButton = event.target.closest('[data-meal-id]');
+    if (!optionButton) {
+      return;
+    }
+    select.value = optionButton.dataset.mealId;
+    closeMenu();
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
+async function addDishToDay(day, dishId) {
+  if (!state.plan[day]) {
+    state.plan[day] = [];
+  }
+
+  if (state.plan[day].includes(dishId)) {
+    renderPlanner();
+    return;
+  }
+
+  const { error } = await supabaseClient.from('meal_plan').upsert({
+    user_id: sharedOwnerId,
+    day,
+    dish_id: dishId
+  }, { onConflict: 'day,dish_id', ignoreDuplicates: true });
+  if (error) {
+    throw error;
+  }
+
+  state.plan[day].push(dishId);
+  renderPlanner();
+  renderDishes();
+  renderShoppingList();
+}
+
+function renderManualShoppingPicker() {
+  const selectedItemsByCategory = new Map();
+  state.manualShoppingItems.forEach((item) => {
+    const ingredient = findIngredientById(item.ingredientId);
+    if (!ingredient) {
+      return;
+    }
+
+    const selectedItems = selectedItemsByCategory.get(ingredient.category) || [];
+    selectedItems.push({ ingredient, quantity: item.quantity });
+    selectedItemsByCategory.set(ingredient.category, selectedItems);
+  });
+
+  const buckets = [...selectedItemsByCategory.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([category, selectedItems]) => `
+      <section class="manual-shopping-bucket">
+        <h4>${getCategoryIcon(category)} ${escapeHtml(category)}</h4>
+        <ul class="manual-shopping-items">
+          ${selectedItems.map(({ ingredient, quantity }) => `
+            <li>
+              <span>${escapeHtml(ingredient.name)}</span>
+              <label class="manual-shopping-quantity">
+                <span class="visually-hidden">Quantity of ${escapeHtml(ingredient.name)}</span>
+                <input type="number" min="1" step="1" value="${Number(quantity)}" data-manual-shopping-quantity="${escapeHtml(ingredient.id)}" aria-label="Quantity of ${escapeHtml(ingredient.name)}" />
+              </label>
+              <button type="button" class="danger planner-icon-action" data-remove-manual-shopping="${escapeHtml(ingredient.id)}" aria-label="Remove ${escapeHtml(ingredient.name)} from the weekly planner" title="Remove ingredient">${renderActionIcon('remove')}</button>
+            </li>
+          `).join('')}
+        </ul>
+      </section>
+    `).join('');
+
+  manualShoppingPicker.innerHTML = `
+    <div class="manual-shopping-search">
+      <input id="manual-shopping-search-input" type="search" placeholder="Search Ingredients" aria-label="Search Ingredients" autocomplete="off" />
+      <div class="manual-shopping-search-results is-empty" role="group" aria-label="Ingredient search results" aria-live="polite" hidden></div>
+    </div>
+    <div class="manual-shopping-buckets">${buckets}</div>
+  `;
+
+  const searchInput = manualShoppingPicker.querySelector('#manual-shopping-search-input');
+  const results = manualShoppingPicker.querySelector('.manual-shopping-search-results');
+  searchInput.addEventListener('input', () => renderManualShoppingSearchResults(searchInput.value, results));
+
+  results.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-add-manual-shopping]');
+    if (!button) {
+      return;
+    }
+    searchInput.value = '';
+    renderManualShoppingSearchResults('', results);
+    runAppAction(() => addIndividualShoppingIngredient(button.dataset.addManualShopping));
+  });
+
+  manualShoppingPicker.querySelectorAll('[data-remove-manual-shopping]').forEach((button) => {
+    button.addEventListener('click', () => runAppAction(() => removeIndividualShoppingIngredient(button.dataset.removeManualShopping)));
+  });
+
+  manualShoppingPicker.querySelectorAll('[data-manual-shopping-quantity]').forEach((input) => {
+    input.addEventListener('change', () => runAppAction(() => updateIndividualShoppingQuantity(
+      input.dataset.manualShoppingQuantity,
+      input.value
+    )));
+  });
+}
+
+function renderManualShoppingSearchResults(query, results) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    results.classList.add('is-empty');
+    results.innerHTML = '';
+    results.hidden = true;
+    return;
+  }
+
+  const matchingIngredients = state.ingredients.filter((ingredient) =>
+    `${ingredient.name} ${ingredient.category}`.toLowerCase().includes(normalizedQuery)
+  );
+  results.hidden = false;
+  results.classList.toggle('is-empty', !matchingIngredients.length);
+  results.innerHTML = matchingIngredients.length
+    ? matchingIngredients.map((ingredient) => `
+      <button type="button" class="manual-shopping-search-result" data-add-manual-shopping="${escapeHtml(ingredient.id)}">
+        <span>${escapeHtml(ingredient.name)}</span>
+        <small>${getCategoryIcon(ingredient.category)} ${escapeHtml(ingredient.category)}</small>
+      </button>
+    `).join('')
+    : '<span class="manual-shopping-search-empty">No matching ingredients.</span>';
 }
 
 async function addIndividualShoppingIngredient(ingredientId) {
@@ -1018,8 +1408,8 @@ async function addIndividualShoppingIngredient(ingredientId) {
 
 async function updateIndividualShoppingQuantity(ingredientId, value) {
   const quantity = Number(value);
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    throw new Error('Ingredient quantity must be greater than zero.');
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    throw new Error('Ingredient quantity must be a whole number greater than zero.');
   }
 
   const { error } = await supabaseClient
