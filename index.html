@@ -117,7 +117,6 @@
                   <th>Category</th>
                   <th>Unit</th>
                   <th>Price</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="ingredient-table-body"></tbody>
@@ -220,7 +219,6 @@
                   <th>Serves</th>
                   <th>Cost</th>
                   <th>Ingredients</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="dish-table-body"></tbody>
@@ -230,28 +228,29 @@
 
         <section id="planner" class="panel">
           <div class="section-header">
-            <div>
+            <div class="planner-title-row">
               <h2>Weekly Planner</h2>
-              <p>Select dishes for each day and build your week.</p>
-            </div>
-            <div class="planner-header-actions">
-              <button type="button" id="randomize-week" class="secondary randomize-week">
-                <span aria-hidden="true">🎲</span> Randomize week
+              <button type="button" id="randomize-week" class="secondary randomize-week" aria-label="Randomize week" title="Randomize week">
+                <span aria-hidden="true">🎲</span>
               </button>
-              <button type="button" id="clear-weekly-plan" class="danger">Start over</button>
             </div>
           </div>
 
-          <div id="planner-kpi" class="planner-kpi" aria-live="polite"></div>
           <section class="weekly-plan-section" aria-labelledby="weekly-plan-title">
             <div class="weekly-plan-heading">
-              <h3 id="weekly-plan-title">Meals by day</h3>
+              <h3 id="weekly-plan-title" aria-live="polite">Meals planned (0)</h3>
+              <button type="button" id="remove-all-meals" class="danger planner-section-remove" aria-label="Remove all meals" title="Remove all meals from the weekly planner">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+              </button>
             </div>
             <div id="planner-grid" class="planner-grid"></div>
           </section>
           <section class="manual-shopping-section" aria-labelledby="manual-shopping-title">
             <div class="manual-shopping-heading">
               <h3 id="manual-shopping-title">Individual ingredients</h3>
+              <button type="button" id="remove-all-manual-ingredients" class="danger planner-section-remove" aria-label="Remove all individual ingredients" title="Remove all individual ingredients from the weekly planner and shopping list">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+              </button>
             </div>
             <div id="manual-shopping-picker" class="manual-shopping-picker"></div>
           </section>
@@ -302,8 +301,8 @@
         <section id="shopping" class="panel active">
           <div class="section-header">
             <h2>Shopping List</h2>
+            <div id="shopping-summary" class="shopping-summary"></div>
           </div>
-          <div id="shopping-summary" class="shopping-summary"></div>
           <div id="shopping-list" class="shopping-list"></div>
         </section>
       </main>

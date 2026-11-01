@@ -217,6 +217,7 @@ const state = {
   ingredients: [],
   dishes: [],
   plan: Object.fromEntries(dayNames.map((day) => [day, []])),
+  excludedIngredients: [],
   manualShoppingItems: [],
   shoppingChecks: {}
 };
@@ -273,7 +274,7 @@ const resetDishButton = document.getElementById('reset-dish-form');
 const newDishButton = document.getElementById('new-dish');
 
 const plannerGrid = document.getElementById('planner-grid');
-const plannerKpi = document.getElementById('planner-kpi');
+const weeklyPlanTitle = document.getElementById('weekly-plan-title');
 const manualShoppingPicker = document.getElementById('manual-shopping-picker');
 const randomizeWeekButton = document.getElementById('randomize-week');
 const analyticsSummary = document.getElementById('analytics-summary');
@@ -282,7 +283,8 @@ const mealRanking = document.getElementById('meal-ranking');
 const historicalRankingList = document.getElementById('historical-ranking');
 const shoppingList = document.getElementById('shopping-list');
 const shoppingSummary = document.getElementById('shopping-summary');
-const clearWeeklyPlanButton = document.getElementById('clear-weekly-plan');
+const removeAllMealsButton = document.getElementById('remove-all-meals');
+const removeAllManualIngredientsButton = document.getElementById('remove-all-manual-ingredients');
 
 let currentDishIngredients = [];
 let currentUserId = null;
@@ -340,7 +342,8 @@ async function init() {
   bindIngredientForm();
   bindDishForm();
   bindDefaultValues();
-  clearWeeklyPlanButton.addEventListener('click', clearWeeklyPlan);
+  removeAllMealsButton.addEventListener('click', removeAllPlannedMeals);
+  removeAllManualIngredientsButton.addEventListener('click', removeAllIndividualIngredients);
   randomizeWeekButton.addEventListener('click', randomizeWeek);
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
@@ -369,6 +372,7 @@ async function handleAuthSession(session) {
       ingredients: [],
       dishes: [],
       plan: Object.fromEntries(dayNames.map((day) => [day, []])),
+      excludedIngredients: [],
       manualShoppingItems: [],
       shoppingChecks: {}
     });
@@ -798,23 +802,25 @@ function renderIngredients() {
   filteredIngredients.forEach((ingredient) => {
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td data-label="Ingredient">${escapeHtml(ingredient.name)}</td>
+      <td data-label="Ingredient">
+        <div class="ingredient-name-cell">
+          <strong>${escapeHtml(ingredient.name)}</strong>
+          <div class="table-actions">
+            <button type="button" class="secondary icon-action" data-edit-ingredient="${ingredient.id}" aria-label="Edit ${escapeHtml(ingredient.name)}" title="Edit ${escapeHtml(ingredient.name)}">${renderActionIcon('edit')}</button>
+            <button type="button" class="danger icon-action" data-remove-ingredient="${ingredient.id}" aria-label="Remove ${escapeHtml(ingredient.name)}" title="Remove ${escapeHtml(ingredient.name)}">${renderActionIcon('remove')}</button>
+          </div>
+        </div>
+      </td>
       <td data-label="Category">${renderCategoryBadge(ingredient.category)}</td>
       <td data-label="Unit">${escapeHtml(ingredient.unit)}</td>
       <td data-label="Price">kr. ${Number(ingredient.price).toFixed(2)}</td>
-      <td data-label="Actions">
-        <div class="table-actions">
-          <button type="button" class="secondary icon-action" data-edit-ingredient="${ingredient.id}" aria-label="Edit ${escapeHtml(ingredient.name)}" title="Edit ${escapeHtml(ingredient.name)}">${renderActionIcon('edit')}</button>
-          <button type="button" class="danger icon-action" data-remove-ingredient="${ingredient.id}" aria-label="Remove ${escapeHtml(ingredient.name)}" title="Remove ${escapeHtml(ingredient.name)}">${renderActionIcon('remove')}</button>
-        </div>
-      </td>
     `;
 
     ingredientTableBody.appendChild(row);
   });
 
   if (!filteredIngredients.length) {
-    ingredientTableBody.innerHTML = `<tr><td colspan="5" class="empty">${searchTerm ? 'No matching ingredients.' : 'No ingredients yet.'}</td></tr>`;
+    ingredientTableBody.innerHTML = `<tr><td colspan="4" class="empty">${searchTerm ? 'No matching ingredients.' : 'No ingredients yet.'}</td></tr>`;
   }
 
   ingredientTableBody.querySelectorAll('[data-edit-ingredient]').forEach((button) => {
@@ -932,8 +938,14 @@ function renderDishes() {
     row.innerHTML = `
       <td data-label="Dish">
         <div class="dish-name-cell">
-          <strong>${escapeHtml(dish.name)}</strong>
-          ${ranking}
+          <div class="dish-title-group">
+            <strong>${escapeHtml(dish.name)}</strong>
+            ${ranking}
+          </div>
+          <div class="table-actions">
+            <button type="button" class="secondary icon-action" data-edit-dish="${dish.id}" aria-label="Edit ${escapeHtml(dish.name)}" title="Edit ${escapeHtml(dish.name)}">${renderActionIcon('edit')}</button>
+            <button type="button" class="danger icon-action" data-remove-dish="${dish.id}" aria-label="Remove ${escapeHtml(dish.name)}" title="Remove ${escapeHtml(dish.name)}">${renderActionIcon('remove')}</button>
+          </div>
         </div>
         ${ratingLabel ? `<span class="dish-rating" aria-label="${rating} out of 5 stars">${ratingLabel}</span>` : ''}
       </td>
@@ -941,19 +953,13 @@ function renderDishes() {
       <td data-label="Serves">${Number(dish.servings) || 1}</td>
       <td data-label="Cost">${formatDishCost(dish)}</td>
       <td data-label="Ingredients">${dish.ingredients.map((ingredient) => `${escapeHtml(ingredient.name || 'Ingredient')} (${Number(ingredient.quantity)})`).join(', ') || 'No ingredients yet'}</td>
-      <td data-label="Actions">
-        <div class="table-actions">
-          <button type="button" class="secondary icon-action" data-edit-dish="${dish.id}" aria-label="Edit ${escapeHtml(dish.name)}" title="Edit ${escapeHtml(dish.name)}">${renderActionIcon('edit')}</button>
-          <button type="button" class="danger icon-action" data-remove-dish="${dish.id}" aria-label="Remove ${escapeHtml(dish.name)}" title="Remove ${escapeHtml(dish.name)}">${renderActionIcon('remove')}</button>
-        </div>
-      </td>
     `;
 
     dishTableBody.appendChild(row);
   });
 
   if (!sortedDishes.length) {
-    dishTableBody.innerHTML = `<tr><td colspan="6" class="empty">${searchTerm ? 'No matching meals.' : 'No meals yet.'}</td></tr>`;
+    dishTableBody.innerHTML = `<tr><td colspan="5" class="empty">${searchTerm ? 'No matching meals.' : 'No meals yet.'}</td></tr>`;
   }
 
   dishTableBody.querySelectorAll('[data-edit-dish]').forEach((button) => {
@@ -1109,42 +1115,65 @@ function closeDishIngredientPicker() {
 function renderPlanner() {
   plannerGrid.innerHTML = '';
   const plannedMealCount = Object.values(state.plan).reduce((total, meals) => total + meals.length, 0);
-  const plannedDayCount = dayNames.filter((day) => (state.plan[day] || []).length > 0).length;
-  plannerKpi.innerHTML = `
-    <span class="planner-kpi-icon" aria-hidden="true">🍽️</span>
-    <span class="planner-kpi-label">Meals planned</span>
-    <strong>${plannedMealCount}</strong>
-    <span class="planner-kpi-note">${plannedDayCount} of 7 days planned</span>
-  `;
+  weeklyPlanTitle.textContent = `Meals planned (${plannedMealCount})`;
+  removeAllMealsButton.disabled = plannedMealCount === 0;
 
-  dayNames.forEach((day) => {
-    const planWrapper = document.createElement('div');
-    planWrapper.className = 'day-plan';
+  const plannedMeals = dayNames.flatMap((day) => (state.plan[day] || []).map((dishId) => ({ day, dishId })));
+  const nextAvailableDay = dayNames.find((day) => !(state.plan[day] || []).length);
+  const planWrapper = document.createElement('div');
+  planWrapper.className = 'day-plan weekly-meals-card';
+  const dishOptions = state.dishes
+    .map((dish) => `<option value="${escapeHtml(dish.id)}">${escapeHtml(dish.name)}</option>`)
+    .join('');
 
-    const chosenMeals = state.plan[day] || [];
-    const dishOptions = state.dishes
-      .map((dish) => `<option value="${dish.id}">${escapeHtml(dish.name)}</option>`)
-      .join('');
-
-    planWrapper.innerHTML = `
-      <h3>${day}</h3>
-      <div class="day-controls">
-        <select data-day-select="${day}" aria-label="Add a meal to ${day}">
+  planWrapper.innerHTML = `
+    <div class="day-controls">
+      ${nextAvailableDay ? `
+        <select data-day-select="${nextAvailableDay}" aria-label="Add a meal">
           <option value=""></option>
           ${dishOptions}
         </select>
-      </div>
-      <ul class="chosen-meals">
-        ${chosenMeals.length ? chosenMeals.map((dishId) => {
-          const dish = state.dishes.find((item) => item.id === dishId);
-          return `<li><span>${dish ? escapeHtml(dish.name) : 'Unknown dish'}</span><button type="button" class="danger planner-icon-action" data-remove-day-dish="${day}|${dishId}" aria-label="Remove ${dish ? escapeHtml(dish.name) : 'meal'} from ${day}" title="Remove meal">${renderActionIcon('remove')}</button></li>`;
-        }).join('') : ''}
-      </ul>
-    `;
-
-    plannerGrid.appendChild(planWrapper);
-    enhancePlannerMealPicker(planWrapper, day);
-  });
+      ` : '<p class="planner-meal-limit">All seven meal slots are filled.</p>'}
+    </div>
+    <div class="planned-meal-list">
+      ${plannedMeals.length ? plannedMeals.map(({ day, dishId }) => {
+        const dish = state.dishes.find((item) => item.id === dishId);
+        const mealName = dish ? dish.name : 'Unknown dish';
+        const ingredients = dish?.ingredients || [];
+        return `
+          <article class="planned-meal">
+            <div class="planned-meal-heading">
+              <strong>${escapeHtml(mealName)}</strong>
+              <button type="button" class="danger planner-icon-action" data-remove-day-dish="${day}|${escapeHtml(dishId)}" aria-label="Remove ${escapeHtml(mealName)}" title="Remove meal">${renderActionIcon('remove')}</button>
+            </div>
+            ${ingredients.length ? `
+              <ul class="planned-meal-ingredients">
+                ${ingredients.map((line) => {
+                  const ingredient = findIngredientById(line.ingredientId);
+                  if (isIngredientExcluded(day, dishId, line.ingredientId)) {
+                    return '';
+                  }
+                  const ingredientName = ingredient?.name || line.name;
+                  const quantity = Number(line.quantity).toLocaleString(undefined, { maximumFractionDigits: 2 });
+                  const unit = ingredient?.unit || 'unit';
+                  return `
+                    <li>
+                      <span>${escapeHtml(ingredientName)} · ${quantity} ${escapeHtml(unit)}</span>
+                      <button type="button" class="ingredient-remove-button" data-remove-meal-ingredient="${day}|${escapeHtml(dishId)}|${escapeHtml(line.ingredientId)}" aria-label="Remove ${escapeHtml(ingredientName)} from ${escapeHtml(mealName)}">×</button>
+                    </li>
+                  `;
+                }).join('')}
+              </ul>
+            ` : '<p class="planned-meal-empty">No ingredients listed.</p>'}
+          </article>
+        `;
+      }).join('') : '<p class="planner-empty">No meals planned yet. Add a meal or randomize the week.</p>'}
+    </div>
+  `;
+  plannerGrid.appendChild(planWrapper);
+  if (nextAvailableDay) {
+    enhancePlannerMealPicker(planWrapper);
+  }
 
   renderManualShoppingPicker();
 
@@ -1172,8 +1201,31 @@ function renderPlanner() {
         throw error;
       }
       state.plan[day] = (state.plan[day] || []).filter((item) => item !== dishId);
+      state.excludedIngredients = state.excludedIngredients.filter((item) =>
+        item.day !== day || item.dishId !== dishId
+      );
       renderPlanner();
       renderDishes();
+      renderShoppingList();
+    }));
+  });
+
+  plannerGrid.querySelectorAll('[data-remove-meal-ingredient]').forEach((button) => {
+    button.addEventListener('click', () => runAppAction(async () => {
+      const [day, dishId, ingredientId] = button.dataset.removeMealIngredient.split('|');
+      const { error } = await supabaseClient.from('meal_plan_ingredient_exclusions').upsert({
+        user_id: sharedOwnerId,
+        day,
+        dish_id: dishId,
+        ingredient_id: ingredientId
+      }, { onConflict: 'day,dish_id,ingredient_id', ignoreDuplicates: true });
+      if (error) {
+        throw error;
+      }
+      if (!isIngredientExcluded(day, dishId, ingredientId)) {
+        state.excludedIngredients.push({ day, dishId, ingredientId });
+      }
+      renderPlanner();
       renderShoppingList();
     }));
   });
@@ -1181,7 +1233,13 @@ function renderPlanner() {
   renderMealAnalytics();
 }
 
-function enhancePlannerMealPicker(planWrapper, day) {
+function isIngredientExcluded(day, dishId, ingredientId) {
+  return state.excludedIngredients.some((item) =>
+    item.day === day && item.dishId === dishId && item.ingredientId === ingredientId
+  );
+}
+
+function enhancePlannerMealPicker(planWrapper) {
   const select = planWrapper.querySelector('[data-day-select]');
   const picker = document.createElement('div');
   picker.className = 'meal-picker';
@@ -1189,7 +1247,7 @@ function enhancePlannerMealPicker(planWrapper, day) {
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className = 'meal-picker-trigger';
-  trigger.setAttribute('aria-label', `Search and add a meal to ${day}`);
+  trigger.setAttribute('aria-label', 'Search and add a meal');
   trigger.setAttribute('aria-haspopup', 'listbox');
   trigger.setAttribute('aria-expanded', 'false');
   trigger.innerHTML = `
@@ -1206,7 +1264,7 @@ function enhancePlannerMealPicker(planWrapper, day) {
   searchInput.type = 'search';
   searchInput.className = 'meal-picker-search';
   searchInput.placeholder = 'Search meals';
-  searchInput.setAttribute('aria-label', `Search meals for ${day}`);
+  searchInput.setAttribute('aria-label', 'Search meals');
   searchInput.autocomplete = 'off';
   const options = document.createElement('div');
   options.className = 'meal-picker-options';
@@ -1290,7 +1348,31 @@ async function addDishToDay(day, dishId) {
   renderShoppingList();
 }
 
+async function removeAllIndividualIngredients() {
+  if (!state.manualShoppingItems.length) {
+    return;
+  }
+  if (!window.confirm('Remove all individually added ingredients from the weekly planner?')) {
+    return;
+  }
+
+  await runAppAction(async () => {
+    const { error } = await supabaseClient
+      .from('shopping_items')
+      .delete()
+      .not('ingredient_id', 'is', null);
+    if (error) {
+      throw error;
+    }
+
+    state.manualShoppingItems = [];
+    renderPlanner();
+    renderShoppingList();
+  });
+}
+
 function renderManualShoppingPicker() {
+  removeAllManualIngredientsButton.disabled = state.manualShoppingItems.length === 0;
   const selectedItemsByCategory = new Map();
   state.manualShoppingItems.forEach((item) => {
     const ingredient = findIngredientById(item.ingredientId);
@@ -1483,6 +1565,7 @@ async function randomizeWeek() {
     }
 
     state.plan = Object.fromEntries(dayNames.map((day, index) => [day, [plannedDishes[index].dish_id]]));
+    state.excludedIngredients = [];
     renderAll();
   });
 }
@@ -1587,34 +1670,38 @@ function renderMealRanking(ranking, target, emptyMessage) {
 }
 
 function renderShoppingList() {
-  const selectedDishIds = Object.values(state.plan).flat();
   const ingredientMap = new Map();
 
-  selectedDishIds.forEach((dishId) => {
-    const dish = state.dishes.find((item) => item.id === dishId);
-    if (!dish) {
-      return;
-    }
-
-    dish.ingredients.forEach((ingredientLine) => {
-      const ingredient = findIngredientById(ingredientLine.ingredientId);
-      const ingredientName = ingredient ? ingredient.name : ingredientLine.name;
-      if (!ingredientName) {
+  dayNames.forEach((day) => {
+    (state.plan[day] || []).forEach((dishId) => {
+      const dish = state.dishes.find((item) => item.id === dishId);
+      if (!dish) {
         return;
       }
 
-      const current = ingredientMap.get(ingredientName) || {
-        name: ingredientName,
-        quantity: 0,
-        category: ingredient?.category || 'Other',
-        unit: ingredient?.unit || 'unit',
-        price: ingredient?.price || 0
-      };
-      current.quantity += Number(ingredientLine.quantity) || 0;
-      current.category = ingredient?.category || current.category;
-      current.unit = ingredient?.unit || current.unit;
-      current.price = ingredient?.price || current.price;
-      ingredientMap.set(ingredientName, current);
+      dish.ingredients.forEach((ingredientLine) => {
+        if (isIngredientExcluded(day, dishId, ingredientLine.ingredientId)) {
+          return;
+        }
+        const ingredient = findIngredientById(ingredientLine.ingredientId);
+        const ingredientName = ingredient ? ingredient.name : ingredientLine.name;
+        if (!ingredientName) {
+          return;
+        }
+
+        const current = ingredientMap.get(ingredientName) || {
+          name: ingredientName,
+          quantity: 0,
+          category: ingredient?.category || 'Other',
+          unit: ingredient?.unit || 'unit',
+          price: ingredient?.price || 0
+        };
+        current.quantity += Number(ingredientLine.quantity) || 0;
+        current.category = ingredient?.category || current.category;
+        current.unit = ingredient?.unit || current.unit;
+        current.price = ingredient?.price || current.price;
+        ingredientMap.set(ingredientName, current);
+      });
     });
   });
 
@@ -1651,11 +1738,6 @@ function renderShoppingList() {
     Boolean(state.shoppingChecks[`${item.category}|${item.name}`])
   ).length;
   const totalEstimatedCost = [...ingredientMap.values()].reduce((sum, item) => sum + item.quantity * item.price, 0);
-  const categoryCosts = [...categories.entries()].map(([category, items]) => ({
-    category,
-    cost: items.reduce((sum, item) => sum + item.quantity * item.price, 0)
-  }));
-  const highestCategoryCost = Math.max(...categoryCosts.map((item) => item.cost), 0);
 
   shoppingList.classList.toggle('two-row', categories.size > 2);
   if (categories.size > 2) {
@@ -1673,21 +1755,6 @@ function renderShoppingList() {
       <span>Estimated cost</span>
       <strong>kr. ${Math.round(totalEstimatedCost).toLocaleString()}</strong>
     </div>
-    <div class="summary-card category-cost-card">
-      <span>Cost by category</span>
-      <div class="category-cost-chart" role="img" aria-label="Estimated cost by shopping category">
-        ${categoryCosts.length ? categoryCosts.map(({ category, cost }) => {
-          const barWidth = highestCategoryCost ? Math.max((cost / highestCategoryCost) * 100, 2) : 0;
-          return `
-            <div class="category-cost-row" aria-label="${escapeHtml(category)}: kr. ${Math.round(cost).toLocaleString()}">
-              <span class="category-cost-label">${escapeHtml(category)}</span>
-              <span class="category-cost-track"><span style="width: ${barWidth}%"></span></span>
-              <strong>kr. ${Math.round(cost).toLocaleString()}</strong>
-            </div>
-          `;
-        }).join('') : '<span class="category-cost-empty">No category costs yet</span>'}
-      </div>
-    </div>
   `;
 
   if (!ingredientMap.size) {
@@ -1696,6 +1763,9 @@ function renderShoppingList() {
   }
 
   const groups = [...categories.entries()].map(([category, items]) => {
+    const checkedCount = items.filter((item) =>
+      Boolean(state.shoppingChecks[`${category}|${item.name}`])
+    ).length;
     const list = items
       .map((item) => {
         const key = `${category}|${item.name}`;
@@ -1716,7 +1786,7 @@ function renderShoppingList() {
 
     return `
       <div class="category-group">
-        <h3>${renderCategoryBadge(category)}</h3>
+        <h3>${renderCategoryBadge(category)}<span class="category-item-count">${checkedCount}/${items.length}</span></h3>
         <ul>${list}</ul>
       </div>
     `;
@@ -1738,15 +1808,20 @@ function renderShoppingList() {
         throw error;
       }
       state.shoppingChecks[key] = checked;
+      const categoryGroup = event.target.closest('.category-group');
+      const categoryCheckboxes = [...categoryGroup.querySelectorAll('[data-shopping-check]')];
+      const checkedCount = categoryCheckboxes.filter((item) => item.checked).length;
+      categoryGroup.querySelector('.category-item-count').textContent =
+        `${checkedCount}/${categoryCheckboxes.length}`;
     }));
   });
 }
 
-async function clearWeeklyPlan() {
-  const confirmed = window.confirm(
-    'Clear all planned meals, individually added ingredients, and shopping-list checkmarks? Your dishes, ingredients, and historical rankings will be kept.'
-  );
-  if (!confirmed) {
+async function removeAllPlannedMeals() {
+  if (!Object.values(state.plan).some((meals) => meals.length)) {
+    return;
+  }
+  if (!window.confirm('Remove all meals from the weekly planner? Individual ingredients and shopping-list checkmarks will be kept.')) {
     return;
   }
 
@@ -1759,25 +1834,8 @@ async function clearWeeklyPlan() {
       throw planError;
     }
 
-    const { error: checksError } = await supabaseClient
-      .from('shopping_checks')
-      .delete()
-      .neq('check_key', '');
-    if (checksError) {
-      throw checksError;
-    }
-
-    const { error: itemsError } = await supabaseClient
-      .from('shopping_items')
-      .delete()
-      .not('ingredient_id', 'is', null);
-    if (itemsError) {
-      throw itemsError;
-    }
-
     state.plan = Object.fromEntries(dayNames.map((day) => [day, []]));
-    state.manualShoppingItems = [];
-    state.shoppingChecks = {};
+    state.excludedIngredients = [];
     renderAll();
   });
 }
@@ -1906,7 +1964,7 @@ function subscribeToSharedUpdates() {
     renderShoppingList();
   });
 
-  ['ingredients', 'dishes', 'dish_ingredients', 'meal_plan'].forEach((table) => {
+  ['ingredients', 'dishes', 'dish_ingredients', 'meal_plan', 'meal_plan_ingredient_exclusions'].forEach((table) => {
     realtimeChannel.on('postgres_changes', {
       event: '*',
       schema: 'public',
@@ -1955,16 +2013,17 @@ async function loadUserState(userId, initializeIfNeeded = true) {
     throw new Error('This account is not part of the shared meal plan. Ask the owner to add it in Supabase.');
   }
 
-  const [ingredientsResult, dishesResult, linesResult, planResult, checksResult, shoppingItemsResult, settingsResult] = await Promise.all([
+  const [ingredientsResult, dishesResult, linesResult, planResult, exclusionsResult, checksResult, shoppingItemsResult, settingsResult] = await Promise.all([
     supabaseClient.from('ingredients').select('id,name,category,unit,price').order('name'),
     supabaseClient.from('dishes').select('id,name,dish_type,servings,total_price,price_per_person,historical_times,rating,source_of_recipe,recipe_notes,future_food_projects,main_ingredient').order('name'),
     supabaseClient.from('dish_ingredients').select('dish_id,ingredient_id,quantity'),
     supabaseClient.from('meal_plan').select('day,dish_id'),
+    supabaseClient.from('meal_plan_ingredient_exclusions').select('day,dish_id,ingredient_id'),
     supabaseClient.from('shopping_checks').select('check_key,checked'),
     supabaseClient.from('shopping_items').select('ingredient_id,quantity'),
     supabaseClient.from('shared_settings').select('owner_id').eq('id', 1).maybeSingle()
   ]);
-  const results = [ingredientsResult, dishesResult, linesResult, planResult, checksResult, shoppingItemsResult, settingsResult];
+  const results = [ingredientsResult, dishesResult, linesResult, planResult, exclusionsResult, checksResult, shoppingItemsResult, settingsResult];
   const failedResult = results.find((result) => result.error);
   if (failedResult) {
     throw failedResult.error;
@@ -2016,6 +2075,11 @@ async function loadUserState(userId, initializeIfNeeded = true) {
       ingredients: linesByDishId.get(dish.id) || []
     })),
     plan,
+    excludedIngredients: exclusionsResult.data.map((item) => ({
+      day: item.day,
+      dishId: item.dish_id,
+      ingredientId: item.ingredient_id
+    })),
     manualShoppingItems: shoppingItemsResult.data.map((item) => ({
       ingredientId: item.ingredient_id,
       quantity: Number(item.quantity) || 1

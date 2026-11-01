@@ -62,6 +62,22 @@ create table if not exists public.meal_plan (
     references public.dishes (id, user_id) on delete cascade
 );
 
+create table if not exists public.meal_plan_ingredient_exclusions (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  day text not null,
+  dish_id uuid not null,
+  ingredient_id uuid not null,
+  primary key (day, dish_id, ingredient_id),
+  constraint meal_plan_ingredient_exclusions_plan_fkey foreign key (day, dish_id)
+    references public.meal_plan (day, dish_id) on delete cascade,
+  foreign key (dish_id, user_id)
+    references public.dishes (id, user_id) on delete cascade,
+  foreign key (dish_id, ingredient_id)
+    references public.dish_ingredients (dish_id, ingredient_id) on delete cascade,
+  foreign key (ingredient_id, user_id)
+    references public.ingredients (id, user_id) on delete cascade
+);
+
 create table if not exists public.shopping_checks (
   user_id uuid not null references auth.users (id) on delete cascade,
   check_key text not null primary key,
@@ -117,6 +133,7 @@ alter table public.ingredients enable row level security;
 alter table public.dishes enable row level security;
 alter table public.dish_ingredients enable row level security;
 alter table public.meal_plan enable row level security;
+alter table public.meal_plan_ingredient_exclusions enable row level security;
 alter table public.shopping_checks enable row level security;
 alter table public.shopping_items enable row level security;
 alter table public.household_members enable row level security;
@@ -150,6 +167,12 @@ create policy "Shared household manages meal plan" on public.meal_plan
   using (public.is_shared_meal_plan_member())
   with check (public.is_shared_meal_plan_member());
 
+drop policy if exists "Shared household manages meal ingredient exclusions" on public.meal_plan_ingredient_exclusions;
+create policy "Shared household manages meal ingredient exclusions" on public.meal_plan_ingredient_exclusions
+  for all to authenticated
+  using (public.is_shared_meal_plan_member())
+  with check (public.is_shared_meal_plan_member());
+
 drop policy if exists "Users manage their shopping checks" on public.shopping_checks;
 drop policy if exists "Shared household manages shopping checks" on public.shopping_checks;
 create policy "Shared household manages shopping checks" on public.shopping_checks
@@ -174,11 +197,13 @@ create policy "Household members read shared settings" on public.shared_settings
   using (public.is_shared_meal_plan_member());
 
 revoke all on public.ingredients, public.dishes, public.dish_ingredients,
-  public.meal_plan, public.shopping_checks, public.shopping_items,
+  public.meal_plan, public.meal_plan_ingredient_exclusions,
+  public.shopping_checks, public.shopping_items,
   public.household_members, public.shared_settings from public, anon;
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.ingredients, public.dishes,
-  public.dish_ingredients, public.meal_plan, public.shopping_checks,
+  public.dish_ingredients, public.meal_plan,
+  public.meal_plan_ingredient_exclusions, public.shopping_checks,
   public.shopping_items to authenticated;
 grant select on public.household_members, public.shared_settings to authenticated;
 
@@ -192,6 +217,15 @@ begin
         and tablename = 'shopping_items'
     ) then
     execute 'alter publication supabase_realtime add table public.shopping_items';
+  end if;
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+    and not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'meal_plan_ingredient_exclusions'
+    ) then
+    execute 'alter publication supabase_realtime add table public.meal_plan_ingredient_exclusions';
   end if;
 end;
 $$;
