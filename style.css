@@ -1124,6 +1124,10 @@ body {
   font-size: 0.8rem;
 }
 
+.sign-out-icon {
+  display: none;
+}
+
 .sidebar nav {
   display: grid;
   gap: 6px;
@@ -1518,7 +1522,7 @@ tbody tr:hover {
 
 @media (max-width: 900px) {
   .app-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;
   }
 
@@ -1604,6 +1608,87 @@ tbody tr:hover {
 }
 
 @media (max-width: 640px) {
+  .sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    gap: 0 12px;
+  }
+
+  .sidebar-top {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .brand {
+    margin: 0;
+  }
+
+  .sidebar-account {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-width: 0;
+    margin-top: 8px;
+  }
+
+  .signed-in-user {
+    flex: 0 1 auto;
+    max-width: calc(100% - 40px);
+  }
+
+  .menu-toggle {
+    justify-self: end;
+  }
+
+  .sign-out {
+    display: grid;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    flex: 0 0 30px;
+    place-items: center;
+    margin: 0;
+    padding: 5px;
+    border-radius: 8px;
+  }
+
+  .sign-out-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .sign-out-icon {
+    display: block;
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
+
+  .sidebar-nav {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .content,
+  .panel {
+    min-width: 0;
+  }
+
   .content {
     padding: 16px 16px 24px;
   }
@@ -1628,18 +1713,23 @@ tbody tr:hover {
     align-items: center;
     flex-direction: row;
     gap: 8px;
+    min-width: 0;
   }
 
   #shopping > .section-header h2 {
     min-width: 0;
     margin: 0;
-    font-size: clamp(1.25rem, 5vw, 1.7rem);
+    flex: 0 1 auto;
+    font-size: clamp(1.05rem, 5vw, 1.45rem);
     white-space: nowrap;
   }
 
   #shopping .shopping-summary {
     min-width: 0;
     gap: 5px;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   #shopping .summary-card {

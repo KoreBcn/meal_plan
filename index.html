@@ -42,7 +42,10 @@
         </div>
         <div class="sidebar-account">
           <p id="signed-in-user" class="signed-in-user"></p>
-          <button type="button" id="sign-out" class="secondary sign-out">Sign out</button>
+          <button type="button" id="sign-out" class="secondary sign-out" aria-label="Sign out" title="Sign out">
+            <span class="sign-out-label">Sign out</span>
+            <svg class="sign-out-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+          </button>
         </div>
         <nav id="primary-navigation" class="sidebar-nav">
           <button class="nav-btn" data-section="ingredients">Ingredients</button>
