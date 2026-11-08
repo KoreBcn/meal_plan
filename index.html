@@ -262,42 +262,119 @@
         <section id="analytics" class="panel">
           <div class="section-header">
             <div>
-              <p class="eyebrow">YOUR WEEK AT A GLANCE</p>
-              <h2>Meal analytics</h2>
-              <p>See which dishes are planned most often this week.</p>
+              <h2>Shopping analytics</h2>
+              <p>Explore receipt spending, purchased items, and item categories stored in Supabase.</p>
             </div>
           </div>
-          <div id="analytics-summary" class="analytics-summary"></div>
-          <section class="weekly-chart-card" aria-labelledby="weekly-chart-title">
-            <div class="weekly-chart-heading">
-              <div>
-                <p class="eyebrow">YOUR PLAN, VISUALIZED</p>
-                <h3 id="weekly-chart-title">Meals across the week</h3>
+          <div id="receipt-summary" class="receipt-summary"></div>
+          <p id="receipt-uncategorized-alert" class="receipt-uncategorized-alert" role="status" hidden></p>
+          <p id="receipt-status" class="status-message" role="status" aria-live="polite"></p>
+          <div class="receipt-analytics-toolbar">
+            <label>
+              <span>Filter by category</span>
+              <select id="receipt-category-filter" disabled>
+                <option value="">All categories</option>
+              </select>
+            </label>
+            <label>
+              <span>Search items</span>
+              <input id="receipt-item-search" type="search" placeholder="Search by item or category" disabled />
+            </label>
+          </div>
+          <div class="receipt-tabs" role="tablist" aria-label="Receipt analytics views">
+            <button type="button" id="receipt-tab-spending" class="receipt-tab active" role="tab" aria-selected="true" aria-controls="receipt-panel-spending" data-receipt-tab="spending">Spending</button>
+            <button type="button" id="receipt-tab-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-items" data-receipt-tab="items" tabindex="-1">Top items</button>
+            <button type="button" id="receipt-tab-categories" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-categories" data-receipt-tab="categories" tabindex="-1">Categories</button>
+            <button type="button" id="receipt-tab-all-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-all-items" data-receipt-tab="all-items" tabindex="-1">All items</button>
+          </div>
+          <section id="receipt-panel-spending" class="receipt-tab-panel active" role="tabpanel" aria-labelledby="receipt-tab-spending">
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">SPENDING OVER TIME</p>
+                  <h3>Spend by shopping date</h3>
+                </div>
+                <span class="ranking-caption">Select a bar to see its receipt items</span>
               </div>
-              <span class="ranking-caption">Leftovers excluded</span>
-            </div>
-            <div id="weekly-chart" class="weekly-chart" role="img" aria-label="Planned meals by day, excluding leftovers"></div>
+              <div id="receipt-spending-chart" class="receipt-spending-chart" aria-label="Total spend by shopping date"></div>
+            </section>
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">SELECTED SHOPPING DATE</p>
+                  <h3 id="receipt-date-title">Choose a date</h3>
+                </div>
+                <strong id="receipt-date-total"></strong>
+              </div>
+              <div class="table-wrap mobile-card-table">
+                <table>
+                  <thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Price</th><th>Rabat</th><th>Netto Plus rabat</th></tr></thead>
+                  <tbody id="receipt-date-items"></tbody>
+                </table>
+              </div>
+            </section>
           </section>
-          <section class="analytics-card">
-            <div class="analytics-card-heading">
-              <div>
-                <p class="eyebrow">WEEKLY RANKING</p>
-                <h3>Meal popularity</h3>
+          <section id="receipt-panel-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-items" hidden>
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">MOST FREQUENTLY PURCHASED</p>
+                  <h3>Top bought items</h3>
+                  <p>Ranked by total spend. Quantities are grouped by unit.</p>
+                </div>
               </div>
-              <span class="ranking-caption">Historical picks and this week's plan</span>
-            </div>
-            <div class="ranking-columns">
-              <div class="ranking-section">
-                <h4>Most planned overall</h4>
-                <p>From the spreadsheet's Times column · leftovers excluded</p>
-                <ol id="historical-ranking" class="meal-ranking"></ol>
+              <div class="table-wrap mobile-card-table">
+                <table>
+                  <thead><tr><th>Item</th><th>Amount bought</th><th>Purchases</th><th>Total spend</th><th>Category</th></tr></thead>
+                  <tbody id="receipt-top-items"></tbody>
+                </table>
               </div>
-              <div class="ranking-section">
-                <h4>This week</h4>
-                <p>Live count from your shared planner</p>
-                <ol id="meal-ranking" class="meal-ranking"></ol>
+            </section>
+          </section>
+          <section id="receipt-panel-categories" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-categories" hidden>
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">CATEGORY BREAKDOWN</p>
+                  <h3>Spend by category</h3>
+                </div>
               </div>
-            </div>
+              <div id="receipt-category-summary" class="receipt-category-summary"></div>
+            </section>
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">ITEM MAPPING</p>
+                  <h3>Assign categories</h3>
+                  <p>Type a category to create it, or rename a category below to update all mapped items.</p>
+                </div>
+              </div>
+              <div class="receipt-category-rename">
+                <label for="receipt-rename-from">Rename category</label>
+                <select id="receipt-rename-from" disabled><option value="">Choose category</option></select>
+                <label class="visually-hidden" for="receipt-rename-to">New category name</label>
+                <input id="receipt-rename-to" type="text" placeholder="New category name" disabled />
+                <button type="button" id="receipt-rename-button" class="secondary" disabled>Rename</button>
+              </div>
+            </section>
+          </section>
+          <section id="receipt-panel-all-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-all-items" hidden>
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">ITEM DIMENSION</p>
+                  <h3>All receipt items</h3>
+                  <p>Search items and assign or update their categories. Type a category name to add it.</p>
+                </div>
+              </div>
+              <datalist id="receipt-category-suggestions"></datalist>
+              <div class="table-wrap mobile-card-table">
+                <table>
+                  <thead><tr><th>Item</th><th>Purchases</th><th>Total spend</th><th>Category</th></tr></thead>
+                  <tbody id="receipt-all-items"></tbody>
+                </table>
+              </div>
+            </section>
           </section>
         </section>
 
@@ -312,7 +389,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
-    <script src="script.js"></script>
+    <script src="supabase/supabase-config.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/receipt-analytics.js"></script>
   </body>
 </html>

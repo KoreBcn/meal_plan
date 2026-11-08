@@ -277,10 +277,6 @@ const plannerGrid = document.getElementById('planner-grid');
 const weeklyPlanTitle = document.getElementById('weekly-plan-title');
 const manualShoppingPicker = document.getElementById('manual-shopping-picker');
 const randomizeWeekButton = document.getElementById('randomize-week');
-const analyticsSummary = document.getElementById('analytics-summary');
-const weeklyChart = document.getElementById('weekly-chart');
-const mealRanking = document.getElementById('meal-ranking');
-const historicalRankingList = document.getElementById('historical-ranking');
 const shoppingList = document.getElementById('shopping-list');
 const shoppingSummary = document.getElementById('shopping-summary');
 const removeAllMealsButton = document.getElementById('remove-all-meals');
@@ -1230,7 +1226,6 @@ function renderPlanner() {
     }));
   });
 
-  renderMealAnalytics();
 }
 
 function isIngredientExcluded(day, dishId, ingredientId) {
@@ -1570,105 +1565,6 @@ async function randomizeWeek() {
   });
 }
 
-function renderMealAnalytics() {
-  const dishCounts = getWeeklyDishCounts(true);
-  const dailyCounts = Object.fromEntries(dayNames.map((day) => [day, 0]));
-  let plannedMealCount = 0;
-  let plannedDayCount = 0;
-
-  dayNames.forEach((day) => {
-    const plannedDishes = (state.plan[day] || [])
-      .filter((dishId) => !isLeftoversDish(state.dishes.find((dish) => dish.id === dishId)));
-    if (plannedDishes.length) {
-      plannedDayCount += 1;
-    }
-    dailyCounts[day] = plannedDishes.length;
-    plannedMealCount += plannedDishes.length;
-  });
-
-  const weeklyRanking = [...dishCounts.entries()]
-    .map(([dishId, count]) => ({
-      dish: state.dishes.find((item) => item.id === dishId),
-      count
-    }))
-    .filter((item) => item.dish)
-    .sort((left, right) => right.count - left.count || left.dish.name.localeCompare(right.dish.name));
-  const historicalRanking = state.dishes
-    .map((dish) => ({ dish, count: Number(dish.historical_times) || 0 }))
-    .filter((item) => item.count > 0 && !isLeftoversDish(item.dish))
-    .sort((left, right) => right.count - left.count || left.dish.name.localeCompare(right.dish.name));
-  const mostPlanned = historicalRanking[0];
-  const totalHistoricalPlans = historicalRanking.reduce((sum, item) => sum + item.count, 0);
-
-  renderWeeklyChart(dailyCounts);
-  analyticsSummary.innerHTML = `
-    <article class="analytics-stat">
-      <span class="analytics-stat-icon" aria-hidden="true">▦</span>
-      <span class="analytics-stat-label">Historical plans</span>
-      <strong>${totalHistoricalPlans.toLocaleString()}</strong>
-      <span class="analytics-stat-note">from your spreadsheet · leftovers excluded</span>
-    </article>
-    <article class="analytics-stat">
-      <span class="analytics-stat-icon" aria-hidden="true">◷</span>
-      <span class="analytics-stat-label">Meals this week</span>
-      <strong>${plannedMealCount}</strong>
-      <span class="analytics-stat-note">${plannedDayCount} ${plannedDayCount === 1 ? 'day' : 'days'} covered · leftovers excluded</span>
-    </article>
-    <article class="analytics-stat analytics-stat-featured">
-      <span class="analytics-stat-icon" aria-hidden="true">★</span>
-      <span class="analytics-stat-label">Most planned overall</span>
-      <strong class="top-meal-name">${mostPlanned ? escapeHtml(mostPlanned.dish.name) : '—'}</strong>
-      <span class="analytics-stat-note">${mostPlanned ? `${mostPlanned.count.toLocaleString()} ${mostPlanned.count === 1 ? 'plan' : 'plans'} in the spreadsheet` : 'No history in the spreadsheet'}</span>
-    </article>
-  `;
-
-  renderMealRanking(historicalRanking, historicalRankingList, 'No historical meal counts were imported.');
-  renderMealRanking(weeklyRanking, mealRanking, 'Your weekly ranking will appear when you plan a dish.');
-}
-
-function renderWeeklyChart(dailyCounts) {
-  const highestCount = Math.max(1, ...Object.values(dailyCounts));
-  weeklyChart.setAttribute(
-    'aria-label',
-    `Planned meals by day, excluding leftovers: ${dayNames.map((day) => `${day} ${dailyCounts[day]}`).join(', ')}`
-  );
-  weeklyChart.innerHTML = dayNames.map((day) => {
-    const count = dailyCounts[day];
-    const height = count ? Math.max(8, Math.round((count / highestCount) * 100)) : 4;
-    return `
-      <div class="weekly-chart-column">
-        <strong class="weekly-chart-count">${count}</strong>
-        <div class="weekly-chart-track">
-          <span class="weekly-chart-bar" style="height: ${height}%" aria-hidden="true"></span>
-        </div>
-        <span class="weekly-chart-day">${escapeHtml(day.slice(0, 3))}</span>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderMealRanking(ranking, target, emptyMessage) {
-  if (!ranking.length) {
-    target.innerHTML = `<li class="analytics-empty">${escapeHtml(emptyMessage)}</li>`;
-    return;
-  }
-
-  const highestCount = ranking[0].count;
-  target.innerHTML = ranking.map(({ dish, count }, index) => {
-    const barWidth = Math.round((count / highestCount) * 100);
-    return `
-      <li class="meal-ranking-row">
-        <span class="rank-position">${String(index + 1).padStart(2, '0')}</span>
-        <div class="rank-meal">
-          <span class="rank-meal-name">${escapeHtml(dish.name)}</span>
-          <span class="rank-bar" aria-hidden="true"><span style="width: ${barWidth}%"></span></span>
-        </div>
-        <span class="rank-count">${count.toLocaleString()}<small>${count === 1 ? 'plan' : 'plans'}</small></span>
-      </li>
-    `;
-  }).join('');
-}
-
 function renderShoppingList() {
   const ingredientMap = new Map();
 
@@ -1838,19 +1734,6 @@ async function removeAllPlannedMeals() {
     state.excludedIngredients = [];
     renderAll();
   });
-}
-
-function getWeeklyDishCounts(excludeLeftovers = false) {
-  const counts = new Map();
-  dayNames.forEach((day) => {
-    (state.plan[day] || []).forEach((dishId) => {
-      const dish = state.dishes.find((item) => item.id === dishId);
-      if (dish && (!excludeLeftovers || !isLeftoversDish(dish))) {
-        counts.set(dishId, (counts.get(dishId) || 0) + 1);
-      }
-    });
-  });
-  return counts;
 }
 
 function isLeftoversDish(dish) {
