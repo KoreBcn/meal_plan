@@ -260,26 +260,23 @@
         </section>
 
         <section id="analytics" class="panel">
-          <div class="section-header">
+          <div class="section-header analytics-section-header">
             <div>
               <h2>Shopping analytics</h2>
               <p>Explore receipt spending, purchased items, and item categories stored in Supabase.</p>
             </div>
+            <div id="receipt-summary" class="receipt-summary"></div>
           </div>
-          <div id="receipt-summary" class="receipt-summary"></div>
           <p id="receipt-uncategorized-alert" class="receipt-uncategorized-alert" role="status" hidden></p>
           <p id="receipt-status" class="status-message" role="status" aria-live="polite"></p>
           <div class="receipt-analytics-toolbar">
-            <label>
-              <span>Filter by category</span>
-              <select id="receipt-category-filter" disabled>
-                <option value="">All categories</option>
-              </select>
-            </label>
-            <label>
-              <span>Search items</span>
-              <input id="receipt-item-search" type="search" placeholder="Search by item or category" disabled />
-            </label>
+            <select id="receipt-year-filter" aria-label="Filter by year" data-searchable="false" disabled>
+              <option value="">Select year</option>
+            </select>
+            <select id="receipt-category-filter" aria-label="Filter by category" data-searchable="false" disabled>
+              <option value="">All categories</option>
+            </select>
+            <input id="receipt-item-search" type="search" aria-label="Filter by item" placeholder="Filter by item" disabled />
           </div>
           <div class="receipt-tabs" role="tablist" aria-label="Receipt analytics views">
             <button type="button" id="receipt-tab-spending" class="receipt-tab active" role="tab" aria-selected="true" aria-controls="receipt-panel-spending" data-receipt-tab="spending">Spending</button>
@@ -308,7 +305,7 @@
               </div>
               <div class="table-wrap mobile-card-table">
                 <table>
-                  <thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Price</th><th>Rabat</th><th>Netto Plus rabat</th></tr></thead>
+                  <thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Total price</th><th>Price per unit</th><th>Owner</th><th>Rabat</th><th>Netto Plus rabat</th></tr></thead>
                   <tbody id="receipt-date-items"></tbody>
                 </table>
               </div>
@@ -341,22 +338,6 @@
               </div>
               <div id="receipt-category-summary" class="receipt-category-summary"></div>
             </section>
-            <section class="receipt-card">
-              <div class="receipt-card-heading">
-                <div>
-                  <p class="eyebrow">ITEM MAPPING</p>
-                  <h3>Assign categories</h3>
-                  <p>Type a category to create it, or rename a category below to update all mapped items.</p>
-                </div>
-              </div>
-              <div class="receipt-category-rename">
-                <label for="receipt-rename-from">Rename category</label>
-                <select id="receipt-rename-from" disabled><option value="">Choose category</option></select>
-                <label class="visually-hidden" for="receipt-rename-to">New category name</label>
-                <input id="receipt-rename-to" type="text" placeholder="New category name" disabled />
-                <button type="button" id="receipt-rename-button" class="secondary" disabled>Rename</button>
-              </div>
-            </section>
           </section>
           <section id="receipt-panel-all-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-all-items" hidden>
             <section class="receipt-card">
@@ -376,6 +357,18 @@
               </div>
             </section>
           </section>
+          <dialog id="receipt-price-trend-dialog" class="receipt-price-trend-dialog" aria-labelledby="receipt-price-trend-title">
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">PURCHASE HISTORY</p>
+                  <h3 id="receipt-price-trend-title">Price per unit trend</h3>
+                </div>
+                <button type="button" id="receipt-price-trend-close" class="secondary" aria-label="Close price trend">Close</button>
+              </div>
+              <div id="receipt-price-trend-chart" class="receipt-price-trend-chart"></div>
+            </section>
+          </dialog>
         </section>
 
         <section id="shopping" class="panel active">

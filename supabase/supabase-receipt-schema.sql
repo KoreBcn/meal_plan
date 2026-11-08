@@ -14,11 +14,41 @@ create table if not exists public.receipt_item_facts (
   item_id uuid not null references public.receipt_item_dimension (id) on delete restrict,
   amount text not null check (length(btrim(amount)) > 0),
   price numeric(12, 2) not null check (price >= 0),
+  price_per_unit numeric(12, 2) check (price_per_unit is null or price_per_unit >= 0),
+  owner text not null default 'C' check (owner in ('A', 'C')),
   transaction_id text,
   discount numeric(12, 2) check (discount is null or discount >= 0),
   discount_plus numeric(12, 2) check (discount_plus is null or discount_plus >= 0),
   created_at timestamptz not null default now()
 );
+
+alter table public.receipt_item_facts
+  add column if not exists price_per_unit numeric(12, 2)
+  check (price_per_unit is null or price_per_unit >= 0);
+
+alter table public.receipt_item_facts
+  add column if not exists owner text not null default 'C'
+  check (owner in ('A', 'C'));
+
+update public.receipt_item_facts
+set price_per_unit = round(
+  price / nullif(
+    replace(
+      substring(btrim(amount) from '^([0-9]+([.,][0-9]+)?)'),
+      ',',
+      '.'
+    )::numeric,
+    0
+  ),
+  2
+)
+where price_per_unit is null
+  and btrim(amount) ~ '^[0-9]+([.,][0-9]+)?'
+  and replace(
+    substring(btrim(amount) from '^([0-9]+([.,][0-9]+)?)'),
+    ',',
+    '.'
+  )::numeric > 0;
 
 create index if not exists receipt_item_facts_date_idx
   on public.receipt_item_facts (purchase_date);
@@ -73,3 +103,5 @@ comment on table public.receipt_item_facts is
   'Purchased receipt lines, linked to the canonical receipt item dimension.';
 comment on column public.receipt_item_facts.source_key is
   'Stable Gmail receipt and line key used to make importer retries idempotent.';
+comment on column public.receipt_item_facts.owner is
+  'Receipt owner inferred from the receipt email subject: A for Kvittering, otherwise C.';

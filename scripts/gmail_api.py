@@ -7,7 +7,8 @@ import hashlib
 import json
 import re
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+from email.header import decode_header, make_header
 from email.message import Message
 from email import policy
 from email.parser import BytesParser
@@ -25,7 +26,10 @@ from googleapiclient.discovery import build
 
 ACCOUNT_EMAIL = "c2015465@gmail.com"
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-GMAIL_QUERY = "subject:receipt"
+GMAIL_QUERY = "{subject:receipt subject:kvittering}"
+RECEIPT_HISTORY_QUERY = (
+    '{subject:"Netto receipts history" subject:"Anna receipt history"}'
+)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLIENT_SECRET_FILE = PROJECT_ROOT / "credentials.json"
 TOKEN_FILE = PROJECT_ROOT / "token.json"
@@ -262,6 +266,10 @@ def write_receipt_facts(
                 "item_id": dimension["id"],
                 "amount": row["amount"],
                 "price": row["price"],
+                "price_per_unit": calculate_price_per_unit(
+                    row["amount"], row["price"]
+                ),
+                "owner": row["owner"],
                 "transaction_id": row.get("transaction_id") or None,
                 "discount": row.get("discount") or None,
                 "discount_plus": row.get("discount_plus") or None,
@@ -276,7 +284,36 @@ def write_receipt_facts(
         facts,
         "resolution=ignore-duplicates,return=representation",
     )
+    sync_receipt_fact_owners(
+        base_url, publishable_key, access_token, facts
+    )
     return len(inserted or [])
+
+
+def sync_receipt_fact_owners(
+    base_url: str,
+    publishable_key: str,
+    access_token: str,
+    facts: list[dict],
+) -> None:
+    source_keys_by_owner = {"A": [], "C": []}
+    for fact in facts:
+        source_keys_by_owner[fact["owner"]].append(fact["source_key"])
+
+    for owner, source_keys in source_keys_by_owner.items():
+        for offset in range(0, len(source_keys), 100):
+            batch = source_keys[offset : offset + 100]
+            if not batch:
+                continue
+            send_supabase_request(
+                base_url,
+                publishable_key,
+                access_token,
+                "PATCH",
+                f"rest/v1/{FACT_TABLE}?source_key=in.({','.join(batch)})",
+                {"owner": owner},
+                "return=minimal",
+            )
 
 
 def clear_receipt_facts(
@@ -435,6 +472,24 @@ def parse_quantity(value: str) -> str | None:
     quantity = match.group(1).replace(",", ".")
     unit = match.group(2)
     return f"{quantity} {unit}" if unit else quantity
+
+
+def calculate_price_per_unit(amount: str, price: str) -> str:
+    match = QUANTITY_RE.fullmatch(amount)
+    if not match:
+        raise ValueError(f"Cannot calculate unit price from amount {amount!r}.")
+    quantity = Decimal(match.group(1).replace(",", "."))
+    if quantity <= 0:
+        raise ValueError(f"Cannot calculate unit price from amount {amount!r}.")
+    unit_price = (Decimal(price) / quantity).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    return f"{unit_price:.2f}"
+
+
+def receipt_owner(subject: str) -> str:
+    decoded_subject = str(make_header(decode_header(subject)))
+    return "A" if "kvittering" in decoded_subject.casefold() else "C"
 
 
 def parse_row_discounts(cells: list[str]) -> tuple[dict[str, str], set[int]]:
@@ -604,6 +659,7 @@ def extract_receipt(message: dict) -> list[dict[str, str]]:
         header["name"].casefold(): header["value"]
         for header in payload.get("headers", [])
     }
+    owner = receipt_owner(headers.get("subject", ""))
     purchase_date = parse_purchase_date(
         body_text, headers, message["internalDate"]
     )
@@ -627,6 +683,7 @@ def extract_receipt(message: dict) -> list[dict[str, str]]:
             "category": "",
             "amount": amount,
             "price": price,
+            "owner": owner,
             "transaction_id": transaction_id,
             "discount": discount,
             "discount_plus": discount_plus,
@@ -668,6 +725,7 @@ def extract_eml_receipt(raw_message: bytes) -> list[dict[str, str]]:
         key.casefold(): str(value)
         for key, value in email_message.items()
     }
+    owner = receipt_owner(headers.get("subject", ""))
     message_date = headers.get("date")
     internal_date = None
     if message_date:
@@ -705,6 +763,7 @@ def extract_eml_receipt(raw_message: bytes) -> list[dict[str, str]]:
             "category": "",
             "amount": amount,
             "price": price,
+            "owner": owner,
             "transaction_id": transaction_id,
             "discount": discount,
             "discount_plus": discount_plus,
@@ -732,13 +791,12 @@ def iter_attachment_parts(part: dict):
 
 
 def read_netto_receipt_history(service) -> tuple[list[dict], int, int]:
-    """Parse receipt .eml attachments from the history email."""
-    history_messages = get_receipt_messages(
-        service, 'subject:"Netto receipts history"'
-    )
+    """Parse receipt .eml attachments from the Netto and Anna history emails."""
+    history_messages = get_receipt_messages(service, RECEIPT_HISTORY_QUERY)
     if not history_messages:
         raise RuntimeError(
-            'No Gmail message found with subject "Netto receipts history".'
+            "No Gmail message found with subject containing "
+            '"Netto receipts history" or "Anna receipt history".'
         )
 
     imported_rows = []
@@ -784,7 +842,7 @@ def read_netto_receipt_history(service) -> tuple[list[dict], int, int]:
                 continue
             imported_rows.extend(rows)
 
-    print(f"Found {len(history_messages)} Netto receipt-history email(s).")
+    print(f"Found {len(history_messages)} receipt-history email(s).")
     if skipped_count:
         print(f"Skipped {skipped_count} non-EML attachment(s).")
     if unparsed_count:
@@ -827,12 +885,12 @@ def main() -> None:
     mode.add_argument(
         "--netto-history",
         action="store_true",
-        help="Import EML receipt attachments from Netto receipts history into Supabase.",
+        help="Import EML receipt attachments from the Netto and Anna history emails into Supabase.",
     )
     mode.add_argument(
         "--reset-and-netto-history",
         action="store_true",
-        help="Parse the history email, confirm deleting all receipt facts, then reimport them.",
+        help="Parse both history emails, confirm deleting all receipt facts, then reimport them.",
     )
     args = argument_parser.parse_args()
 

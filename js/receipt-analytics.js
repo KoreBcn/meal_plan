@@ -1,4 +1,5 @@
 const receiptStatus = document.getElementById('receipt-status');
+const receiptYearFilter = document.getElementById('receipt-year-filter');
 const receiptCategoryFilter = document.getElementById('receipt-category-filter');
 const receiptItemSearch = document.getElementById('receipt-item-search');
 const receiptTabs = [...document.querySelectorAll('[data-receipt-tab]')];
@@ -11,16 +12,18 @@ const receiptDateItems = document.getElementById('receipt-date-items');
 const receiptTopItems = document.getElementById('receipt-top-items');
 const receiptCategorySummary = document.getElementById('receipt-category-summary');
 const receiptAllItems = document.getElementById('receipt-all-items');
-const receiptRenameFrom = document.getElementById('receipt-rename-from');
-const receiptRenameTo = document.getElementById('receipt-rename-to');
-const receiptRenameButton = document.getElementById('receipt-rename-button');
 const receiptCategorySuggestions = document.getElementById('receipt-category-suggestions');
 const receiptUncategorizedAlert = document.getElementById('receipt-uncategorized-alert');
+const receiptPriceTrendDialog = document.getElementById('receipt-price-trend-dialog');
+const receiptPriceTrendTitle = document.getElementById('receipt-price-trend-title');
+const receiptPriceTrendChart = document.getElementById('receipt-price-trend-chart');
+const receiptPriceTrendClose = document.getElementById('receipt-price-trend-close');
 
 const receiptAnalytics = {
   rows: [],
   items: [],
   selectedDate: null,
+  year: String(new Date().getFullYear()),
   category: '',
   itemSearch: '',
   userId: null,
@@ -40,6 +43,10 @@ const receiptNumber = new Intl.NumberFormat('da-DK', {
 initReceiptAnalytics();
 
 function initReceiptAnalytics() {
+  receiptYearFilter.addEventListener('change', () => {
+    receiptAnalytics.year = receiptYearFilter.value;
+    renderReceiptAnalytics();
+  });
   receiptCategoryFilter.addEventListener('change', () => {
     receiptAnalytics.category = receiptCategoryFilter.value;
     renderReceiptAnalytics();
@@ -76,7 +83,13 @@ function initReceiptAnalytics() {
     });
   });
   receiptAllItems.addEventListener('change', handleCategoryEdit);
-  receiptRenameButton.addEventListener('click', renameReceiptCategory);
+  receiptAllItems.addEventListener('click', handlePriceTrendClick);
+  receiptPriceTrendClose.addEventListener('click', () => receiptPriceTrendDialog.close());
+  receiptPriceTrendDialog.addEventListener('click', (event) => {
+    if (event.target === receiptPriceTrendDialog) {
+      receiptPriceTrendDialog.close();
+    }
+  });
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(() => handleReceiptSession(session), 0);
   });
@@ -99,11 +112,9 @@ async function handleReceiptSession(session) {
     receiptAnalytics.loadingUserId = null;
     receiptAnalytics.rows = [];
     receiptAnalytics.items = [];
+    receiptYearFilter.disabled = true;
     receiptCategoryFilter.disabled = true;
     receiptItemSearch.disabled = true;
-    receiptRenameFrom.disabled = true;
-    receiptRenameTo.disabled = true;
-    receiptRenameButton.disabled = true;
     receiptUncategorizedAlert.hidden = true;
     renderReceiptAnalytics();
     setReceiptStatus('Sign in to view receipt analytics.');
@@ -135,7 +146,7 @@ async function loadReceiptData(loadId) {
         .order('name')),
       loadAllReceiptRows(() => supabaseClient
         .from('receipt_item_facts')
-        .select('id,purchase_date,item_id,amount,price,transaction_id,discount,discount_plus')
+        .select('id,purchase_date,item_id,amount,price,price_per_unit,owner,transaction_id,discount,discount_plus')
         .order('purchase_date'))
     ]);
     if (loadId !== receiptAnalytics.loadId) {
@@ -155,14 +166,14 @@ async function loadReceiptData(loadId) {
         item_id: item.id,
         normalized_name: item.normalized_name,
         category: item.category || '',
-        price: Number(fact.price)
+        price: Number(fact.price),
+        price_per_unit: fact.price_per_unit == null ? null : Number(fact.price_per_unit)
       };
     });
+    updateReceiptYearOptions();
+    updateReceiptCategoryOptions();
     receiptCategoryFilter.disabled = false;
     receiptItemSearch.disabled = false;
-    receiptRenameFrom.disabled = false;
-    receiptRenameTo.disabled = false;
-    receiptRenameButton.disabled = false;
     const uncategorizedCount = itemsResult.filter((item) => !item.category).length;
     receiptUncategorizedAlert.hidden = uncategorizedCount === 0;
     receiptUncategorizedAlert.textContent = uncategorizedCount
@@ -211,11 +222,33 @@ function activateReceiptTab(name) {
 function filteredReceiptRows() {
   return receiptAnalytics.rows.filter((row) => {
     const category = normalizeCategory(row.category);
-    const matchesCategory = !receiptAnalytics.category || category === receiptAnalytics.category;
-    const matchesSearch = !receiptAnalytics.itemSearch
-      || `${row.item} ${category}`.toLocaleLowerCase().includes(receiptAnalytics.itemSearch);
-    return matchesCategory && matchesSearch;
+    return row.date.slice(0, 4) === receiptAnalytics.year
+      && (!receiptAnalytics.category || category === receiptAnalytics.category)
+      && (!receiptAnalytics.itemSearch || row.item.toLocaleLowerCase().includes(receiptAnalytics.itemSearch));
   });
+}
+
+function updateReceiptYearOptions() {
+  const years = new Set(receiptAnalytics.rows.map((row) => row.date.slice(0, 4)));
+  years.add(String(new Date().getFullYear()));
+  const orderedYears = [...years].sort((left, right) => right.localeCompare(left));
+  receiptYearFilter.innerHTML = orderedYears
+    .map((year) => `<option value="${year}">${year}</option>`)
+    .join('');
+  receiptYearFilter.value = receiptAnalytics.year;
+  receiptYearFilter.disabled = false;
+}
+
+function updateReceiptCategoryOptions() {
+  const categories = categoryNames();
+  if (receiptAnalytics.category && !categories.includes(receiptAnalytics.category)) {
+    receiptAnalytics.category = '';
+  }
+  receiptCategoryFilter.innerHTML = [
+    '<option value="">All categories</option>',
+    ...categories.map((category) => `<option value="${escapeReceiptHtml(category)}">${escapeReceiptHtml(category)}</option>`)
+  ].join('');
+  receiptCategoryFilter.value = receiptAnalytics.category;
 }
 
 function categoryNames() {
@@ -228,15 +261,7 @@ function normalizeCategory(category) {
 }
 
 function renderReceiptAnalytics() {
-  const categories = categoryNames();
-  if (receiptAnalytics.category && !categories.includes(receiptAnalytics.category)) {
-    receiptAnalytics.category = '';
-  }
-  receiptCategoryFilter.innerHTML = [
-    '<option value="">All categories</option>',
-    ...categories.map((category) => `<option value="${escapeReceiptHtml(category)}">${escapeReceiptHtml(category)}</option>`)
-  ].join('');
-  receiptCategoryFilter.value = receiptAnalytics.category;
+  updateReceiptCategoryOptions();
   const rows = filteredReceiptRows();
   const totalSpend = rows.reduce((sum, row) => sum + Number(row.price), 0);
   const dates = new Set(rows.map((row) => row.date)).size;
@@ -289,12 +314,14 @@ function renderSpendingDetails() {
         <td data-label="Item">${escapeReceiptHtml(row.item)}</td>
         <td data-label="Category">${escapeReceiptHtml(row.category || 'Uncategorized')}</td>
         <td data-label="Amount">${escapeReceiptHtml(row.amount)}</td>
-        <td data-label="Price">${formatReceiptMoney(Number(row.price))}</td>
+        <td data-label="Total price">${formatReceiptMoney(Number(row.price))}</td>
+        <td data-label="Price per unit">${row.price_per_unit == null ? '—' : formatReceiptMoney(row.price_per_unit)}</td>
+        <td data-label="Owner">${escapeReceiptHtml(row.owner || '')}</td>
         <td data-label="Rabat">${row.discount == null ? '—' : formatReceiptMoney(Number(row.discount))}</td>
         <td data-label="Netto Plus rabat">${row.discount_plus == null ? '—' : formatReceiptMoney(Number(row.discount_plus))}</td>
       </tr>
     `).join('')
-    : '<tr><td colspan="6" class="receipt-empty">No items for this date and category.</td></tr>';
+    : '<tr><td colspan="8" class="receipt-empty">No items for this date and year.</td></tr>';
 }
 
 function aggregateReceiptItems(rows) {
@@ -366,26 +393,22 @@ function renderReceiptCategories(rows) {
     `).join('')
     : '<p class="receipt-empty">No category totals available.</p>';
 
-  const categoriesList = categoryNames();
-  receiptRenameFrom.innerHTML = [
-    '<option value="">Choose category</option>',
-    ...categoriesList.filter((category) => category !== 'Uncategorized')
-      .map((category) => `<option value="${escapeReceiptHtml(category)}">${escapeReceiptHtml(category)}</option>`)
-  ].join('');
-  receiptCategorySuggestions.innerHTML = categoriesList
+  receiptCategorySuggestions.innerHTML = categoryNames()
     .filter((category) => category !== 'Uncategorized')
     .map((category) => `<option value="${escapeReceiptHtml(category)}"></option>`).join('');
 }
 
 function renderAllReceiptItems() {
-  const aggregates = new Map(aggregateReceiptItems(receiptAnalytics.rows)
+  const aggregates = new Map(aggregateReceiptItems(filteredReceiptRows())
     .map((item) => [item.itemId, item]));
   const items = receiptAnalytics.items.filter((item) => {
     const category = normalizeCategory(item.category);
-    const matchesCategory = !receiptAnalytics.category || category === receiptAnalytics.category;
-    const matchesSearch = !receiptAnalytics.itemSearch
-      || `${item.name} ${category}`.toLocaleLowerCase().includes(receiptAnalytics.itemSearch);
-    return matchesCategory && matchesSearch;
+    return (!receiptAnalytics.category || category === receiptAnalytics.category)
+      && (!receiptAnalytics.itemSearch || item.name.toLocaleLowerCase().includes(receiptAnalytics.itemSearch));
+  }).sort((left, right) => {
+    const leftSpend = aggregates.get(left.id)?.spend || 0;
+    const rightSpend = aggregates.get(right.id)?.spend || 0;
+    return rightSpend - leftSpend || left.name.localeCompare(right.name);
   });
   receiptAllItems.innerHTML = items.length
     ? items.map((item) => {
@@ -397,12 +420,90 @@ function renderAllReceiptItems() {
           <td data-label="Purchases">${aggregate?.purchases || 0}</td>
           <td data-label="Total spend">${formatReceiptMoney(aggregate?.spend || 0)}</td>
           <td data-label="Category">
-            <input type="text" list="receipt-category-suggestions" value="${category === 'Uncategorized' ? '' : escapeReceiptHtml(category)}" placeholder="Uncategorized" data-category-item="${escapeReceiptHtml(item.id)}" aria-label="Category for ${escapeReceiptHtml(item.name)}" />
+            <div class="receipt-item-category-control">
+              <input type="text" list="receipt-category-suggestions" value="${category === 'Uncategorized' ? '' : escapeReceiptHtml(category)}" placeholder="Uncategorized" data-category-item="${escapeReceiptHtml(item.id)}" aria-label="Category for ${escapeReceiptHtml(item.name)}" />
+              <button type="button" class="receipt-price-trend-button" data-price-trend-item="${escapeReceiptHtml(item.id)}" aria-label="Show price per unit trend for ${escapeReceiptHtml(item.name)}" title="Show price per unit trend">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-7"/></svg>
+              </button>
+            </div>
           </td>
         </tr>
       `;
     }).join('')
     : '<tr><td colspan="4" class="receipt-empty">No items match these filters.</td></tr>';
+}
+
+function handlePriceTrendClick(event) {
+  const button = event.target.closest('[data-price-trend-item]');
+  if (!button) {
+    return;
+  }
+  const item = receiptAnalytics.items.find((candidate) => candidate.id === button.dataset.priceTrendItem);
+  if (!item) {
+    setReceiptStatus('Could not find the selected receipt item.', true);
+    return;
+  }
+  const history = receiptAnalytics.rows
+    .filter((row) => row.item_id === item.id && Number.isFinite(row.price_per_unit))
+    .sort((left, right) => left.date.localeCompare(right.date));
+  receiptPriceTrendTitle.textContent = `${item.name} — price per unit`;
+  receiptPriceTrendChart.innerHTML = renderPriceTrendChart(history);
+  receiptPriceTrendDialog.showModal();
+}
+
+function renderPriceTrendChart(history) {
+  if (!history.length) {
+    return '<p class="receipt-empty">No price-per-unit history is available for this item.</p>';
+  }
+  const width = 560;
+  const height = 250;
+  const margin = { top: 18, right: 24, bottom: 42, left: 72 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  const values = history.map((row) => Number(row.price_per_unit));
+  const valueMin = Math.min(...values);
+  const valueMax = Math.max(...values);
+  const padding = valueMax === valueMin ? Math.max(valueMax * 0.1, 1) : (valueMax - valueMin) * 0.1;
+  const min = Math.max(0, valueMin - padding);
+  const max = valueMax + padding;
+  const firstTime = Date.parse(`${history[0].date}T00:00:00Z`);
+  const lastTime = Date.parse(`${history[history.length - 1].date}T00:00:00Z`);
+  const points = history.map((row, index) => {
+    const time = Date.parse(`${row.date}T00:00:00Z`);
+    const xRatio = lastTime === firstTime ? index / Math.max(history.length - 1, 1) : (time - firstTime) / (lastTime - firstTime);
+    return {
+      x: margin.left + xRatio * chartWidth,
+      y: margin.top + (max - Number(row.price_per_unit)) / (max - min || 1) * chartHeight,
+      row
+    };
+  });
+  const grid = Array.from({ length: 4 }, (_, index) => {
+    const ratio = index / 3;
+    const y = margin.top + ratio * chartHeight;
+    const value = max - ratio * (max - min);
+    return `
+      <line class="receipt-price-trend-gridline" x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" />
+      <text class="receipt-price-trend-axis-label" x="${margin.left - 10}" y="${y + 4}" text-anchor="end">${escapeReceiptHtml(formatReceiptMoney(value))}</text>
+    `;
+  }).join('');
+  const line = points.map((point) => `${point.x},${point.y}`).join(' ');
+  const markers = points.map(({ x, y, row }) => `
+    <circle class="receipt-price-trend-point" cx="${x}" cy="${y}" r="4">
+      <title>${escapeReceiptHtml(formatReceiptDate(row.date))}: ${escapeReceiptHtml(formatReceiptMoney(Number(row.price_per_unit)))}</title>
+    </circle>
+  `).join('');
+  const startLabel = escapeReceiptHtml(formatReceiptDate(history[0].date));
+  const endLabel = escapeReceiptHtml(formatReceiptDate(history[history.length - 1].date));
+  return `
+    <svg class="receipt-price-trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Price per unit history from ${startLabel} to ${endLabel}">
+      ${grid}
+      <polyline class="receipt-price-trend-line" points="${line}" />
+      ${markers}
+      <text class="receipt-price-trend-axis-label" x="${margin.left}" y="${height - 12}" text-anchor="start">${startLabel}</text>
+      <text class="receipt-price-trend-axis-label" x="${width - margin.right}" y="${height - 12}" text-anchor="end">${endLabel}</text>
+    </svg>
+    <p class="receipt-price-trend-count">${history.length.toLocaleString()} purchase${history.length === 1 ? '' : 's'} in history</p>
+  `;
 }
 
 async function handleCategoryEdit(event) {
@@ -430,45 +531,6 @@ async function handleCategoryEdit(event) {
       }
     });
     setReceiptStatus(`Saved category mapping for ${input.getAttribute('aria-label').replace(/^Category for /, '')}.`);
-    renderReceiptAnalytics();
-  } catch (error) {
-    setReceiptStatus(error.message || String(error), true);
-    renderReceiptAnalytics();
-  }
-}
-
-async function renameReceiptCategory() {
-  const oldCategory = receiptRenameFrom.value;
-  const newCategory = receiptRenameTo.value.trim();
-  if (!oldCategory || !newCategory) {
-    setReceiptStatus('Choose an existing category and enter its new name.', true);
-    return;
-  }
-  if (oldCategory === newCategory) {
-    setReceiptStatus('The new category name must be different.', true);
-    return;
-  }
-  try {
-    const { error } = await supabaseClient
-      .from('receipt_item_dimension')
-      .update({ category: newCategory })
-      .eq('category', oldCategory);
-    if (error) {
-      throw error;
-    }
-    receiptAnalytics.rows.forEach((row) => {
-      if (row.category === oldCategory) {
-        row.category = newCategory;
-      }
-    });
-    receiptAnalytics.items.forEach((item) => {
-      if (item.category === oldCategory) {
-        item.category = newCategory;
-      }
-    });
-    receiptAnalytics.category = '';
-    receiptRenameTo.value = '';
-    setReceiptStatus(`Renamed "${oldCategory}" to "${newCategory}" across matching items.`);
     renderReceiptAnalytics();
   } catch (error) {
     setReceiptStatus(error.message || String(error), true);

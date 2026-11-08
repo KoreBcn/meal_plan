@@ -1,5 +1,7 @@
 """Serve the Meal Plan app over loopback for local development."""
 
+import errno
+import sys
 from http.server import (
     SimpleHTTPRequestHandler,
     ThreadingHTTPServer,
@@ -23,7 +25,18 @@ class ReceiptRequestHandler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
-    server = LocalReceiptServer((HOST, PORT), ReceiptRequestHandler)
+    try:
+        server = LocalReceiptServer((HOST, PORT), ReceiptRequestHandler)
+    except OSError as error:
+        if error.errno == errno.EADDRINUSE or getattr(error, "winerror", None) == 10048:
+            print(
+                f"Could not start the Meal Plan server: port {PORT} is already in use.\n"
+                f"Open the existing server at http://localhost:{PORT}/, or stop it "
+                "with Ctrl+C in the terminal where it is running."
+            )
+            sys.exit(1)
+        raise
+
     print(f"Serving Meal Plan at http://localhost:{PORT}/ (local machine only)")
     try:
         server.serve_forever()

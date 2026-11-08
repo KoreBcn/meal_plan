@@ -2688,27 +2688,28 @@ body[data-theme="dark"] .weekly-chart-count {
 }
 
 .receipt-analytics-toolbar {
-  display: flex;
-  align-items: end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin: 18px 0;
-}
-
-.receipt-analytics-toolbar label,
-.receipt-category-rename label {
-  color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 650;
-}
-
-.receipt-analytics-toolbar label {
-  min-width: min(240px, 100%);
-  gap: 6px;
 }
 
 .receipt-analytics-toolbar select,
 .receipt-analytics-toolbar input {
   min-height: 42px;
+}
+
+.analytics-section-header .receipt-summary {
+  flex: 0 1 440px;
+}
+
+.analytics-section-header .receipt-stat {
+  min-width: 0;
+  padding: 14px 18px;
+}
+
+.analytics-section-header .receipt-stat strong {
+  font-size: 1.25rem;
 }
 
 .receipt-tabs {
@@ -2889,6 +2890,119 @@ body[data-theme="dark"] .weekly-chart-count {
   padding: 7px 10px;
 }
 
+.receipt-item-category-control {
+  display: flex;
+  min-width: 190px;
+  align-items: center;
+  gap: 7px;
+}
+
+.receipt-card .receipt-item-category-control input[type="text"] {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.receipt-price-trend-button {
+  display: inline-grid;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-alt);
+  color: var(--primary);
+}
+
+.receipt-price-trend-button:hover {
+  border-color: var(--primary);
+  background: var(--panel);
+}
+
+.receipt-price-trend-button:focus-visible,
+.receipt-price-trend-dialog button:focus-visible {
+  outline: 3px solid rgba(47, 121, 94, 0.3);
+  outline-offset: 2px;
+}
+
+.receipt-price-trend-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.receipt-price-trend-dialog {
+  width: min(680px, calc(100% - 28px));
+  max-width: 680px;
+  max-height: min(90vh, 560px);
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+}
+
+.receipt-price-trend-dialog::backdrop {
+  background: rgba(15, 25, 20, 0.48);
+  backdrop-filter: blur(2px);
+}
+
+.receipt-price-trend-dialog .receipt-card {
+  margin: 0;
+}
+
+.receipt-price-trend-dialog .receipt-card-heading {
+  align-items: center;
+}
+
+.receipt-price-trend-chart {
+  min-height: 190px;
+}
+
+.receipt-price-trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.receipt-price-trend-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.receipt-price-trend-axis-label {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.receipt-price-trend-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.receipt-price-trend-point {
+  fill: var(--panel);
+  stroke: var(--primary);
+  stroke-width: 2.5;
+}
+
+.receipt-price-trend-count {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
 .receipt-empty {
   padding: 22px 10px;
   color: var(--muted);
@@ -2937,21 +3051,14 @@ body[data-theme="dark"] .weekly-chart-count {
   background: linear-gradient(90deg, #72a878, #2f795e);
 }
 
-.receipt-category-rename {
-  display: grid;
-  grid-template-columns: auto minmax(130px, 1fr) minmax(150px, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  margin: 14px 0;
-}
-
-.receipt-category-rename button {
-  padding: 0 14px;
-}
-
 @media (max-width: 640px) {
   .receipt-card {
     padding: 16px;
+  }
+
+  .analytics-section-header .receipt-summary {
+    width: 100%;
+    flex: 0 1 auto;
   }
 
   .receipt-summary {
@@ -2970,18 +3077,13 @@ body[data-theme="dark"] .weekly-chart-count {
   }
 
   .receipt-analytics-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 6px;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .receipt-analytics-toolbar select,
   .receipt-analytics-toolbar input {
     width: 100%;
-  }
-
-  .receipt-category-rename {
-    grid-template-columns: 1fr;
   }
 
   .receipt-category-row {
