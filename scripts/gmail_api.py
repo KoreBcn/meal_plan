@@ -5,6 +5,7 @@ import argparse
 import getpass
 import hashlib
 import json
+import os
 import re
 from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -112,6 +113,15 @@ class ReceiptHTMLParser(HTMLParser):
 
 
 def load_supabase_config() -> tuple[str, str]:
+    environment_url = os.environ.get("SUPABASE_URL")
+    environment_key = os.environ.get("SUPABASE_PUBLISHABLE_KEY")
+    if environment_url or environment_key:
+        if not environment_url or not environment_key:
+            raise ValueError(
+                "Both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are required."
+            )
+        return environment_url.rstrip("/"), environment_key
+
     if not SUPABASE_CONFIG_FILE.is_file():
         raise FileNotFoundError(
             f"Supabase config file not found: {SUPABASE_CONFIG_FILE}"
@@ -180,8 +190,20 @@ def send_supabase_request(
 
 def authenticate_supabase() -> tuple[str, str, str]:
     base_url, publishable_key = load_supabase_config()
-    email = input("Supabase household account email: ").strip()
-    password = getpass.getpass("Supabase account password: ")
+    email = os.environ.get("SUPABASE_EMAIL", "").strip()
+    password = os.environ.get("SUPABASE_PASSWORD", "")
+    if email or password:
+        if not email or not password:
+            raise ValueError(
+                "Both SUPABASE_EMAIL and SUPABASE_PASSWORD are required."
+            )
+    elif os.environ.get("GITHUB_ACTIONS") == "true":
+        raise ValueError(
+            "Set SUPABASE_EMAIL and SUPABASE_PASSWORD in GitHub Actions secrets."
+        )
+    else:
+        email = input("Supabase household account email: ").strip()
+        password = getpass.getpass("Supabase account password: ")
     if not email or not password:
         raise ValueError("A Supabase account email and password are required.")
     result = send_supabase_request(
@@ -335,31 +357,60 @@ def clear_receipt_facts(
 
 
 def get_gmail_service():
-    """Run the local OAuth flow and return an authenticated Gmail API client."""
+    """Return an authenticated Gmail API client from env credentials or local OAuth."""
     credentials = None
-    if TOKEN_FILE.exists():
-        credentials = Credentials.from_authorized_user_file(
-            str(TOKEN_FILE), SCOPES
-        )
-
-    if credentials and not credentials.has_scopes(SCOPES):
-        credentials = None
-
-    if credentials and credentials.expired and credentials.refresh_token:
-        credentials.refresh(Request())
-    elif not credentials or not credentials.valid:
-        if not CLIENT_SECRET_FILE.exists():
-            raise FileNotFoundError(
-                f"OAuth client file not found: {CLIENT_SECRET_FILE}. "
-                "Download a Desktop app OAuth client from Google Cloud and "
-                "save it as credentials.json."
+    environment_credentials = {
+        "GMAIL_CLIENT_ID": os.environ.get("GMAIL_CLIENT_ID"),
+        "GMAIL_CLIENT_SECRET": os.environ.get("GMAIL_CLIENT_SECRET"),
+        "GMAIL_REFRESH_TOKEN": os.environ.get("GMAIL_REFRESH_TOKEN"),
+    }
+    if any(environment_credentials.values()):
+        missing = [
+            name for name, value in environment_credentials.items() if not value
+        ]
+        if missing:
+            raise ValueError(
+                "Missing GitHub Actions Gmail credential(s): "
+                + ", ".join(missing)
             )
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(CLIENT_SECRET_FILE), SCOPES
+        credentials = Credentials(
+            token=None,
+            refresh_token=environment_credentials["GMAIL_REFRESH_TOKEN"],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=environment_credentials["GMAIL_CLIENT_ID"],
+            client_secret=environment_credentials["GMAIL_CLIENT_SECRET"],
+            scopes=SCOPES,
         )
-        credentials = flow.run_local_server(port=0)
+        credentials.refresh(Request())
+    else:
+        if TOKEN_FILE.exists():
+            credentials = Credentials.from_authorized_user_file(
+                str(TOKEN_FILE), SCOPES
+            )
 
-    TOKEN_FILE.write_text(credentials.to_json(), encoding="utf-8")
+        if credentials and not credentials.has_scopes(SCOPES):
+            credentials = None
+
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        elif not credentials or not credentials.valid:
+            if os.environ.get("GITHUB_ACTIONS") == "true":
+                raise ValueError(
+                    "Set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and "
+                    "GMAIL_REFRESH_TOKEN in GitHub Actions secrets."
+                )
+            if not CLIENT_SECRET_FILE.exists():
+                raise FileNotFoundError(
+                    f"OAuth client file not found: {CLIENT_SECRET_FILE}. "
+                    "Download a Desktop app OAuth client from Google Cloud and "
+                    "save it as credentials.json."
+                )
+            flow = InstalledAppFlow.from_client_secrets_file(
+                str(CLIENT_SECRET_FILE), SCOPES
+            )
+            credentials = flow.run_local_server(port=0)
+
+        TOKEN_FILE.write_text(credentials.to_json(), encoding="utf-8")
     return build("gmail", "v1", credentials=credentials, cache_discovery=False)
 
 

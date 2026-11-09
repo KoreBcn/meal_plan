@@ -54,3 +54,16 @@ Run `python scripts/gmail_api.py` to import regular receipt emails with either `
 The Analytics view reads receipt facts joined to the item dimension. It defaults to the current year and lets you select another purchase year. Spending is grouped by shopping date; the selected date's table shows each line's total and calculated price per unit. Top items are ranked by total spend. Use the Categories tab for category spend and the All items tab to edit categories. Uncategorized items are explicitly flagged.
 
 To test a clean history import after installing the receipt schema and seeding the dimension, run `python scripts/gmail_api.py --reset-and-netto-history`. The script parses every attachment from both history emails first, refuses to clear facts if any attachment fails parsing, then asks you to type `DELETE ALL RECEIPT FACTS` before deleting only `receipt_item_facts` and reimporting. Item dimensions and their categories, and Gmail messages, are preserved.
+
+### Scheduled receipt import with GitHub Actions
+
+The [receipt import workflow](./.github/workflows/receipt-import.yml) runs the regular receipt parser daily at 00:00 UTC and can also be started manually from the repository's **Actions** tab. GitHub scheduled workflows use UTC; the run time does not automatically adjust for daylight saving time. The import is idempotent, so repeated runs do not create duplicate receipt facts.
+
+Add these repository **Actions secrets** under **Settings → Secrets and variables → Actions**:
+
+- `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET`: the OAuth client ID and secret from the Google Cloud Desktop app credentials.
+- `GMAIL_REFRESH_TOKEN`: the `refresh_token` from the local `token.json` created after signing into the Gmail account with `python scripts/gmail_api.py`. The token must have the Gmail read-only scope. Keep the token file private.
+- `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`: the project URL and publishable key used in the local Supabase config.
+- `SUPABASE_EMAIL` and `SUPABASE_PASSWORD`: the confirmed Supabase household account used to sign in. Its existing RLS membership must allow receipt imports.
+
+The workflow refreshes Gmail access with the OAuth client credentials at runtime and uses the Supabase account's authenticated session, so no service-role key is needed. The workflow never writes OAuth credentials to the repository.
