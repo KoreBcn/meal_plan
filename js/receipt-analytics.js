@@ -23,6 +23,7 @@ const receiptAnalytics = {
   rows: [],
   items: [],
   selectedDate: null,
+  month: '',
   year: String(new Date().getFullYear()),
   category: '',
   itemSearch: '',
@@ -55,6 +56,16 @@ function initReceiptAnalytics() {
     receiptAnalytics.itemSearch = receiptItemSearch.value.trim().toLocaleLowerCase();
     renderReceiptAnalytics();
   });
+  receiptSummary.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-receipt-month]');
+    if (!button) {
+      return;
+    }
+    receiptAnalytics.month = receiptAnalytics.month === button.dataset.receiptMonth
+      ? ''
+      : button.dataset.receiptMonth;
+    renderReceiptAnalytics();
+  });
   receiptTabs.forEach((tab, index) => {
     tab.addEventListener('click', () => activateReceiptTab(tab.dataset.receiptTab));
     tab.addEventListener('keydown', (event) => {
@@ -83,7 +94,7 @@ function initReceiptAnalytics() {
     });
   });
   receiptAllItems.addEventListener('change', handleCategoryEdit);
-  receiptAllItems.addEventListener('click', handlePriceTrendClick);
+  receiptTopItems.addEventListener('click', handlePriceTrendClick);
   receiptPriceTrendClose.addEventListener('click', () => receiptPriceTrendDialog.close());
   receiptPriceTrendDialog.addEventListener('click', (event) => {
     if (event.target === receiptPriceTrendDialog) {
@@ -179,7 +190,7 @@ async function loadReceiptData(loadId) {
     receiptUncategorizedAlert.textContent = uncategorizedCount
       ? `${uncategorizedCount.toLocaleString()} items need a category. Assign them in the All items tab.`
       : '';
-    setReceiptStatus(`Loaded ${receiptAnalytics.rows.length.toLocaleString()} receipt line items from Supabase.`);
+    setReceiptStatus('');
     renderReceiptAnalytics();
     return true;
   } catch (error) {
@@ -219,10 +230,11 @@ function activateReceiptTab(name) {
   });
 }
 
-function filteredReceiptRows() {
+function filteredReceiptRows(includeMonth = true) {
   return receiptAnalytics.rows.filter((row) => {
     const category = normalizeCategory(row.category);
     return row.date.slice(0, 4) === receiptAnalytics.year
+      && (!includeMonth || !receiptAnalytics.month || row.date.slice(5, 7) === receiptAnalytics.month)
       && (!receiptAnalytics.category || category === receiptAnalytics.category)
       && (!receiptAnalytics.itemSearch || row.item.toLocaleLowerCase().includes(receiptAnalytics.itemSearch));
   });
@@ -263,16 +275,51 @@ function normalizeCategory(category) {
 function renderReceiptAnalytics() {
   updateReceiptCategoryOptions();
   const rows = filteredReceiptRows();
-  const totalSpend = rows.reduce((sum, row) => sum + Number(row.price), 0);
-  const dates = new Set(rows.map((row) => row.date)).size;
-  receiptSummary.innerHTML = `
-    <article class="receipt-stat"><span>Total spend</span><strong>${formatReceiptMoney(totalSpend)}</strong></article>
-    <article class="receipt-stat"><span>Shopping dates</span><strong>${dates.toLocaleString()}</strong></article>
-  `;
+  renderReceiptMonthlySummary(filteredReceiptRows(false));
   renderReceiptSpending(rows);
   renderTopReceiptItems(rows);
   renderReceiptCategories(rows);
   renderAllReceiptItems();
+}
+
+function renderReceiptMonthlySummary(rows) {
+  const months = Array.from({ length: 12 }, (_, index) => ({
+    month: index,
+    spend: 0,
+    dates: new Set()
+  }));
+  rows.forEach((row) => {
+    const month = Number(row.date.slice(5, 7)) - 1;
+    if (month >= 0 && month < months.length) {
+      months[month].spend += Number(row.price);
+      months[month].dates.add(row.date);
+    }
+  });
+  const maximum = Math.max(...months.map((month) => month.spend), 1);
+  const columns = months.map((month) => {
+    const name = new Intl.DateTimeFormat('da-DK', { month: 'short' })
+      .format(new Date(2020, month.month, 1))
+      .replace(/\.$/, '');
+    const shoppingDates = month.dates.size;
+    const height = month.spend
+      ? Math.max(3, Math.round(month.spend / maximum * 100))
+      : 0;
+    const description = `${name}: ${shoppingDates.toLocaleString()} shopping date${shoppingDates === 1 ? '' : 's'}, ${formatReceiptMoney(month.spend)} total spend`;
+    const selected = receiptAnalytics.month === String(month.month + 1).padStart(2, '0');
+    return `
+      <button type="button" class="receipt-month-column" data-receipt-month="${String(month.month + 1).padStart(2, '0')}" title="${escapeReceiptHtml(description)}" aria-label="Filter by ${escapeReceiptHtml(name)}: ${shoppingDates.toLocaleString()} shopping date${shoppingDates === 1 ? '' : 's'}, ${escapeReceiptHtml(formatReceiptMoney(month.spend))} total spend" aria-pressed="${selected}" ${shoppingDates ? '' : 'disabled'}>
+        <span class="receipt-month-count">${shoppingDates.toLocaleString()}</span>
+        <span class="receipt-month-track"><span class="receipt-month-fill" style="height:${height}%"></span></span>
+        <span class="receipt-month-label">${escapeReceiptHtml(name)}</span>
+      </button>
+    `;
+  }).join('');
+  receiptSummary.innerHTML = `
+    <p class="receipt-monthly-heading">Monthly Spend</p>
+    <div class="receipt-monthly-chart" role="group" aria-label="Monthly spending and shopping dates for ${escapeReceiptHtml(receiptAnalytics.year)}${receiptAnalytics.month ? `. ${new Intl.DateTimeFormat('da-DK', { month: 'long' }).format(new Date(2020, Number(receiptAnalytics.month) - 1, 1))} selected; click it again to clear` : '. Select a month to filter analytics'}">
+      ${columns}
+    </div>
+  `;
 }
 
 function renderReceiptSpending(rows) {
@@ -364,7 +411,14 @@ function renderTopReceiptItems(rows) {
         <td data-label="Amount bought">${[...item.amounts.entries()].map(([unit, amount]) => `${receiptNumber.format(amount)}${unit ? ` ${escapeReceiptHtml(unit)}` : ''}`).join(' + ')}</td>
         <td data-label="Purchases">${item.purchases}</td>
         <td data-label="Total spend">${formatReceiptMoney(item.spend)}</td>
-        <td data-label="Category">${escapeReceiptHtml(item.category)}</td>
+        <td data-label="Category">
+          <div class="receipt-item-category-control receipt-top-item-category">
+            <span>${escapeReceiptHtml(item.category)}</span>
+            <button type="button" class="receipt-price-trend-button" data-price-trend-item="${escapeReceiptHtml(item.itemId)}" aria-label="Show price per unit trend for ${escapeReceiptHtml(item.name)}" title="Show price per unit trend">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-7"/></svg>
+            </button>
+          </div>
+        </td>
       </tr>
     `).join('')
     : '<tr><td colspan="5" class="receipt-empty">No items match this category.</td></tr>';
@@ -422,9 +476,6 @@ function renderAllReceiptItems() {
           <td data-label="Category">
             <div class="receipt-item-category-control">
               <input type="text" list="receipt-category-suggestions" value="${category === 'Uncategorized' ? '' : escapeReceiptHtml(category)}" placeholder="Uncategorized" data-category-item="${escapeReceiptHtml(item.id)}" aria-label="Category for ${escapeReceiptHtml(item.name)}" />
-              <button type="button" class="receipt-price-trend-button" data-price-trend-item="${escapeReceiptHtml(item.id)}" aria-label="Show price per unit trend for ${escapeReceiptHtml(item.name)}" title="Show price per unit trend">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-7"/></svg>
-              </button>
             </div>
           </td>
         </tr>

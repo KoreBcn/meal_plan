@@ -338,6 +338,14 @@ async function init() {
   bindIngredientForm();
   bindDishForm();
   bindDefaultValues();
+  shoppingSummary.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-shopping-clear-checks]');
+    if (!button || button.disabled) {
+      return;
+    }
+    button.disabled = true;
+    runAppAction(clearShoppingChecks);
+  });
   removeAllMealsButton.addEventListener('click', removeAllPlannedMeals);
   removeAllManualIngredientsButton.addEventListener('click', removeAllIndividualIngredients);
   randomizeWeekButton.addEventListener('click', randomizeWeek);
@@ -1651,6 +1659,9 @@ function renderShoppingList() {
       <span>Estimated cost</span>
       <strong>kr. ${Math.round(totalEstimatedCost).toLocaleString()}</strong>
     </div>
+    <button type="button" class="summary-card shopping-clear-checks" data-shopping-clear-checks aria-label="Untick all checked shopping items" title="Untick all checked shopping items">
+      Clear checks
+    </button>
   `;
 
   if (!ingredientMap.size) {
@@ -1711,6 +1722,31 @@ function renderShoppingList() {
         `${checkedCount}/${categoryCheckboxes.length}`;
     }));
   });
+}
+
+async function clearShoppingChecks() {
+  const checkedKeys = [...shoppingList.querySelectorAll('[data-shopping-check]:checked')]
+    .map((checkbox) => checkbox.dataset.shoppingCheck);
+  if (!checkedKeys.length) {
+    return;
+  }
+
+  const { error } = await supabaseClient.from('shopping_checks').upsert(
+    checkedKeys.map((check_key) => ({
+      user_id: sharedOwnerId,
+      check_key,
+      checked: false
+    })),
+    { onConflict: 'check_key' }
+  );
+  if (error) {
+    throw error;
+  }
+
+  checkedKeys.forEach((key) => {
+    state.shoppingChecks[key] = false;
+  });
+  renderShoppingList();
 }
 
 async function removeAllPlannedMeals() {

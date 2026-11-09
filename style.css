@@ -894,6 +894,29 @@ tbody tr:hover {
   font-weight: 600;
 }
 
+.summary-card.shopping-clear-checks {
+  justify-content: center;
+  border-color: var(--primary);
+  background: var(--panel-alt);
+  color: var(--primary-dark);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.summary-card.shopping-clear-checks:hover:not(:disabled) {
+  background: var(--panel);
+}
+
+.summary-card.shopping-clear-checks:focus-visible {
+  outline: 3px solid rgba(47, 121, 94, 0.22);
+  outline-offset: 2px;
+}
+
+.summary-card.shopping-clear-checks:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 #shopping > .section-header {
   align-items: center;
 }
@@ -1743,6 +1766,10 @@ tbody tr:hover {
 
   #shopping .summary-card strong {
     font-size: 0.78rem;
+  }
+
+  #shopping .summary-card.shopping-clear-checks {
+    font-size: 0.62rem;
   }
 
   .content > .status-message:empty {
@@ -2660,6 +2687,10 @@ body[data-theme="dark"] .weekly-chart-count {
   margin: 8px 0 0;
 }
 
+#receipt-status:empty {
+  display: none;
+}
+
 .receipt-uncategorized-alert {
   margin: 10px 0 0;
   padding: 11px 14px;
@@ -2703,15 +2734,6 @@ body[data-theme="dark"] .weekly-chart-count {
   flex: 0 1 440px;
 }
 
-.analytics-section-header .receipt-stat {
-  min-width: 0;
-  padding: 14px 18px;
-}
-
-.analytics-section-header .receipt-stat strong {
-  font-size: 1.25rem;
-}
-
 .receipt-tabs {
   display: flex;
   gap: 7px;
@@ -2736,7 +2758,8 @@ body[data-theme="dark"] .weekly-chart-count {
 }
 
 .receipt-tab:focus-visible,
-.receipt-bar-column:focus-visible {
+.receipt-bar-column:focus-visible,
+.receipt-month-column:focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 3px;
 }
@@ -2752,30 +2775,81 @@ body[data-theme="dark"] .weekly-chart-count {
 }
 
 .receipt-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.receipt-stat {
-  display: grid;
-  gap: 9px;
-  padding: 18px 20px;
+  min-width: 0;
+  padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
 
-.receipt-stat span {
+.receipt-monthly-heading {
+  margin: 0 0 5px;
   color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 650;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.receipt-stat strong {
-  font-size: 1.5rem;
+.receipt-monthly-chart {
+  display: grid;
+  min-height: 60px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(2px, 0.6vw, 7px);
+}
+
+.receipt-month-column {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: 10px minmax(18px, 1fr) 11px;
+  justify-items: center;
+  gap: 2px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
   font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.receipt-month-column:hover,
+.receipt-month-column[aria-pressed="true"] {
+  background: var(--panel-alt);
+  color: var(--primary);
+}
+
+.receipt-month-column[aria-pressed="true"] .receipt-month-fill {
+  background: linear-gradient(180deg, #9dcc8b, #34815f);
+}
+
+.receipt-month-count,
+.receipt-month-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.56rem;
+  line-height: 1;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.receipt-month-track {
+  display: flex;
+  width: min(100%, 16px);
+  min-height: 18px;
+  align-items: end;
+  overflow: hidden;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--panel-alt);
+}
+
+.receipt-month-fill {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, #72a878, #2f795e);
 }
 
 .receipt-card {
@@ -2895,6 +2969,16 @@ body[data-theme="dark"] .weekly-chart-count {
   min-width: 190px;
   align-items: center;
   gap: 7px;
+}
+
+.receipt-top-item-category {
+  min-width: 0;
+  justify-content: space-between;
+}
+
+.receipt-top-item-category > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .receipt-card .receipt-item-category-control input[type="text"] {
@@ -3061,19 +3145,13 @@ body[data-theme="dark"] .weekly-chart-count {
     flex: 0 1 auto;
   }
 
-  .receipt-summary {
-    grid-template-columns: 1fr;
-    gap: 9px;
+  .receipt-monthly-chart {
+    gap: 2px;
   }
 
-  .receipt-stat {
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    padding: 12px 14px;
-  }
-
-  .receipt-stat strong {
-    font-size: 1.1rem;
+  .receipt-month-count,
+  .receipt-month-label {
+    font-size: 0.5rem;
   }
 
   .receipt-analytics-toolbar {
@@ -3100,6 +3178,11 @@ body[data-theme="dark"] .weekly-chart-count {
     align-items: start;
     flex-direction: column;
     gap: 6px;
+  }
+
+  #receipt-panel-all-items .mobile-card-table tbody td[data-label="Item"],
+  #receipt-panel-all-items .mobile-card-table tbody td[data-label="Category"] {
+    grid-column: 1 / -1;
   }
 }
 
