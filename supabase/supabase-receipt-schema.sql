@@ -16,6 +16,7 @@ create table if not exists public.receipt_item_facts (
   price numeric(12, 2) not null check (price >= 0),
   price_per_unit numeric(12, 2) check (price_per_unit is null or price_per_unit >= 0),
   owner text not null default 'C' check (owner in ('A', 'C')),
+  supermarket text,
   transaction_id text,
   discount numeric(12, 2) check (discount is null or discount >= 0),
   discount_plus numeric(12, 2) check (discount_plus is null or discount_plus >= 0),
@@ -29,6 +30,9 @@ alter table public.receipt_item_facts
 alter table public.receipt_item_facts
   add column if not exists owner text not null default 'C'
   check (owner in ('A', 'C'));
+
+alter table public.receipt_item_facts
+  add column if not exists supermarket text;
 
 update public.receipt_item_facts
 set price_per_unit = round(
@@ -105,3 +109,5 @@ comment on column public.receipt_item_facts.source_key is
   'Stable Gmail receipt and line key used to make importer retries idempotent.';
 comment on column public.receipt_item_facts.owner is
   'Receipt owner inferred from the receipt email subject: A for Kvittering, otherwise C.';
+comment on column public.receipt_item_facts.supermarket is
+  'Supermarket inferred from the receipt subject or receipt-history source; null when unknown.';

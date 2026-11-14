@@ -292,6 +292,7 @@ def write_receipt_facts(
                     row["amount"], row["price"]
                 ),
                 "owner": row["owner"],
+                "supermarket": row.get("supermarket") or None,
                 "transaction_id": row.get("transaction_id") or None,
                 "discount": row.get("discount") or None,
                 "discount_plus": row.get("discount_plus") or None,
@@ -306,34 +307,58 @@ def write_receipt_facts(
         facts,
         "resolution=ignore-duplicates,return=representation",
     )
-    sync_receipt_fact_owners(
+    sync_receipt_fact_metadata(
         base_url, publishable_key, access_token, facts
     )
     return len(inserted or [])
 
 
-def sync_receipt_fact_owners(
+def sync_receipt_fact_metadata(
     base_url: str,
     publishable_key: str,
     access_token: str,
     facts: list[dict],
 ) -> None:
-    source_keys_by_owner = {"A": [], "C": []}
+    source_keys_by_metadata = {}
+    source_keys_by_discount = {}
     for fact in facts:
-        source_keys_by_owner[fact["owner"]].append(fact["source_key"])
+        metadata = (fact["owner"], fact["supermarket"])
+        source_keys_by_metadata.setdefault(metadata, []).append(fact["source_key"])
+        if fact.get("discount") or fact.get("discount_plus"):
+            discount = (fact["item_id"], fact.get("discount"), fact.get("discount_plus"))
+            source_keys_by_discount.setdefault(discount, []).append(fact["source_key"])
 
-    for owner, source_keys in source_keys_by_owner.items():
+    for (owner, supermarket), source_keys in source_keys_by_metadata.items():
         for offset in range(0, len(source_keys), 100):
             batch = source_keys[offset : offset + 100]
-            if not batch:
-                continue
+            metadata = {"owner": owner}
+            if supermarket:
+                metadata["supermarket"] = supermarket
             send_supabase_request(
                 base_url,
                 publishable_key,
                 access_token,
                 "PATCH",
                 f"rest/v1/{FACT_TABLE}?source_key=in.({','.join(batch)})",
-                {"owner": owner},
+                metadata,
+                "return=minimal",
+            )
+
+    for (item_id, discount, discount_plus), source_keys in source_keys_by_discount.items():
+        updates = {"item_id": item_id}
+        if discount is not None:
+            updates["discount"] = discount
+        if discount_plus is not None:
+            updates["discount_plus"] = discount_plus
+        for offset in range(0, len(source_keys), 100):
+            batch = source_keys[offset : offset + 100]
+            send_supabase_request(
+                base_url,
+                publishable_key,
+                access_token,
+                "PATCH",
+                f"rest/v1/{FACT_TABLE}?source_key=in.({','.join(batch)})",
+                updates,
                 "return=minimal",
             )
 
@@ -543,6 +568,26 @@ def receipt_owner(subject: str) -> str:
     return "A" if "kvittering" in decoded_subject.casefold() else "C"
 
 
+def receipt_supermarket(subject: str) -> str:
+    decoded_subject = str(make_header(decode_header(subject)))
+    match = re.search(r"\breceipt\s+from\s+(.+?)\s*$", decoded_subject, re.I)
+    if match:
+        supermarket = re.sub(
+            r"\s+-\s+(?:\d{1,2}\.\s*(?:"
+            + "|".join(DANISH_MONTHS)
+            + r")\s+\d{4}|\d{4}-\d{2}-\d{2})\s*$",
+            "",
+            match.group(1),
+            flags=re.I,
+        ).strip()
+        if re.match(r"^føtex(?:\s|$)", supermarket, re.I):
+            return "Føtex"
+        return supermarket
+    if re.search(r"\bnetto\b", decoded_subject, re.I):
+        return "Netto"
+    return ""
+
+
 def parse_row_discounts(cells: list[str]) -> tuple[dict[str, str], set[int]]:
     discounts = {"discount": "", "discount_plus": ""}
     consumed_cells = set()
@@ -599,11 +644,27 @@ def parse_item_rows(
 ) -> list[tuple[str, str, str, str | None, str, str]]:
     items = []
     for cells in rows:
+        combined_quantity_price = False
+        if len(cells) == 2:
+            match = re.fullmatch(
+                r"\s*(\d+(?:[.,]\d+)?\s+stk)\s+(.+?)\s*", cells[1], re.I
+            )
+            if match and parse_plain_price(match.group(2)) is not None:
+                cells = [cells[0], match.group(1), match.group(2)]
+                combined_quantity_price = True
         item = next((cell.strip() for cell in cells if cell.strip()), "")
         if not item:
             continue
 
         discounts, consumed_discount_cells = parse_row_discounts(cells)
+        item = remove_discount_annotations(item).strip()
+        if combined_quantity_price:
+            item = re.sub(
+                r"\s+\d+(?:[.,]\d+)?\s*x\s*\d[\d.,]*\s*$",
+                "",
+                item,
+                flags=re.I,
+            ).strip()
         quantity = next(
             (parsed for cell in cells if (parsed := parse_quantity(cell))),
             None,
@@ -620,7 +681,7 @@ def parse_item_rows(
             if deposit:
                 deposits.append(deposit)
 
-        if quantity and (prices or deposits) and not re.search(
+        if item and quantity and (prices or deposits) and not re.search(
             r"\b(total|moms|subtotal|betaling|heraf)\b", item, re.I
         ):
             base_price = prices[-1] if prices else "0.00"
@@ -681,6 +742,11 @@ def parse_purchase_date(
 
 def extract_receipt(message: dict) -> list[dict[str, str]]:
     payload = message["payload"]
+    headers = {
+        header["name"].casefold(): header["value"]
+        for header in payload.get("headers", [])
+    }
+    supermarket = receipt_supermarket(headers.get("subject", ""))
     parts = list(iter_parts(payload))
     html_bodies = [
         decode_part(part)
@@ -706,10 +772,6 @@ def extract_receipt(message: dict) -> list[dict[str, str]]:
         body_text = " ".join(text_bodies)
         items = []
 
-    headers = {
-        header["name"].casefold(): header["value"]
-        for header in payload.get("headers", [])
-    }
     owner = receipt_owner(headers.get("subject", ""))
     purchase_date = parse_purchase_date(
         body_text, headers, message["internalDate"]
@@ -735,6 +797,7 @@ def extract_receipt(message: dict) -> list[dict[str, str]]:
             "amount": amount,
             "price": price,
             "owner": owner,
+            "supermarket": supermarket,
             "transaction_id": transaction_id,
             "discount": discount,
             "discount_plus": discount_plus,
@@ -777,6 +840,7 @@ def extract_eml_receipt(raw_message: bytes) -> list[dict[str, str]]:
         for key, value in email_message.items()
     }
     owner = receipt_owner(headers.get("subject", ""))
+    supermarket = receipt_supermarket(headers.get("subject", ""))
     message_date = headers.get("date")
     internal_date = None
     if message_date:
@@ -815,6 +879,7 @@ def extract_eml_receipt(raw_message: bytes) -> list[dict[str, str]]:
             "amount": amount,
             "price": price,
             "owner": owner,
+            "supermarket": supermarket,
             "transaction_id": transaction_id,
             "discount": discount,
             "discount_plus": discount_plus,
@@ -891,6 +956,8 @@ def read_netto_receipt_history(service) -> tuple[list[dict], int, int]:
             if not rows:
                 unparsed_count += 1
                 continue
+            for row in rows:
+                row["supermarket"] = "Netto"
             imported_rows.extend(rows)
 
     print(f"Found {len(history_messages)} receipt-history email(s).")
