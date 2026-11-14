@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Meal Plan Planner</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=3" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -279,6 +279,7 @@
             <button type="button" id="receipt-tab-spending" class="receipt-tab active" role="tab" aria-selected="true" aria-controls="receipt-panel-spending" data-receipt-tab="spending">Spending</button>
             <button type="button" id="receipt-tab-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-items" data-receipt-tab="items" tabindex="-1">Top items</button>
             <button type="button" id="receipt-tab-categories" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-categories" data-receipt-tab="categories" tabindex="-1">Categories</button>
+            <button type="button" id="receipt-tab-supermarkets" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-supermarkets" data-receipt-tab="supermarkets" tabindex="-1">Supermarkets</button>
             <button type="button" id="receipt-tab-all-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-all-items" data-receipt-tab="all-items" tabindex="-1">Mappings</button>
           </div>
           <section id="receipt-panel-spending" class="receipt-tab-panel active" role="tabpanel" aria-labelledby="receipt-tab-spending">
@@ -298,11 +299,14 @@
                   <p class="eyebrow">SELECTED SHOPPING DATE</p>
                   <h3 id="receipt-date-title">Choose a date</h3>
                 </div>
-                <strong id="receipt-date-total"></strong>
+                <div class="receipt-date-totals">
+                  <div><span>Total price</span><strong id="receipt-date-total"></strong></div>
+                  <div><span>Total discount</span><strong id="receipt-date-discount"></strong></div>
+                </div>
               </div>
               <div class="table-wrap mobile-card-table">
                 <table>
-                  <thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Total price</th><th>Price per unit</th><th>Owner</th><th>Supermarket</th><th>Rabat</th><th>Netto Plus rabat</th></tr></thead>
+                  <thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Total price</th><th>Price per unit</th><th>Owner</th><th>Supermarket</th><th>Discount</th></tr></thead>
                   <tbody id="receipt-date-items"></tbody>
                 </table>
               </div>
@@ -334,6 +338,23 @@
                 </div>
               </div>
               <div id="receipt-category-summary" class="receipt-category-summary"></div>
+            </section>
+          </section>
+          <section id="receipt-panel-supermarkets" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-supermarkets" hidden>
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <div>
+                  <p class="eyebrow">SUPERMARKET BREAKDOWN</p>
+                  <h3>Spend and discounts by supermarket</h3>
+                  <p>Discounts include regular and Netto Plus discounts.</p>
+                </div>
+              </div>
+              <div class="table-wrap mobile-card-table">
+                <table>
+                  <thead><tr><th>Supermarket</th><th>Total spend</th><th>Total discount</th></tr></thead>
+                  <tbody id="receipt-supermarket-summary"></tbody>
+                </table>
+              </div>
             </section>
           </section>
           <section id="receipt-panel-all-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-all-items" hidden>
@@ -381,6 +402,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
     <script src="js/script.js"></script>
-    <script src="js/receipt-analytics.js"></script>
+    <script src="js/receipt-analytics.js?v=4"></script>
   </body>
 </html>

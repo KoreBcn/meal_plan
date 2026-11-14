@@ -2874,6 +2874,24 @@ body[data-theme="dark"] .weekly-chart-count {
   margin-bottom: 6px !important;
 }
 
+.receipt-date-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-self: flex-end;
+  gap: 16px;
+  text-align: right;
+}
+
+.receipt-date-totals div {
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-date-totals span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .receipt-spending-chart {
   display: flex;
   min-height: 270px;
