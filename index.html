@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Meal Plan Planner</title>
-    <link rel="stylesheet" href="style.css?v=3" />
+    <link rel="stylesheet" href="style.css?v=15" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -40,13 +40,6 @@
             <span aria-hidden="true"></span>
           </button>
         </div>
-        <div class="sidebar-account">
-          <p id="signed-in-user" class="signed-in-user"></p>
-          <button type="button" id="sign-out" class="secondary sign-out" aria-label="Sign out" title="Sign out">
-            <span class="sign-out-label">Sign out</span>
-            <svg class="sign-out-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
-          </button>
-        </div>
         <nav id="primary-navigation" class="sidebar-nav">
           <button class="nav-btn" data-section="ingredients">Ingredients</button>
           <button class="nav-btn" data-section="dishes">Dishes</button>
@@ -54,19 +47,18 @@
           <button class="nav-btn active" data-section="shopping">Shopping List</button>
           <button class="nav-btn" data-section="analytics">Analytics</button>
         </nav>
+        <div class="sidebar-account">
+          <p id="signed-in-user" class="signed-in-user"></p>
+          <button type="button" id="sign-out" class="secondary sign-out" aria-label="Sign out" title="Sign out">
+            <svg class="sign-out-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+          </button>
+        </div>
       </aside>
 
       <main class="content">
         <p id="app-status" class="status-message" role="status" aria-live="polite"></p>
-        <section id="ingredients" class="panel">
-          <div class="section-header">
-            <div>
-              <h2>Ingredients</h2>
-              <p>Add items, update prices, and organize them by section.</p>
-            </div>
-            <button type="button" id="new-ingredient" class="primary add-item-button" aria-label="Add ingredient" title="Add ingredient"><span aria-hidden="true">+</span></button>
-          </div>
-
+        <section id="ingredients" class="panel" aria-label="Ingredients">
+          <h2 class="mobile-panel-title">Ingredients</h2>
           <form id="ingredient-form" class="card-form" hidden>
             <input type="hidden" id="ingredient-id" />
             <div class="field-grid">
@@ -107,10 +99,13 @@
           </form>
 
           <div class="collection-toolbar">
-            <label for="ingredient-search">
-              <span>Search ingredients</span>
-              <input id="ingredient-search" type="search" placeholder="Search by name or category" />
-            </label>
+            <div class="collection-filters">
+              <label for="ingredient-search">
+                <span>Search ingredients</span>
+                <input id="ingredient-search" type="search" placeholder="Search by name or category" />
+              </label>
+            </div>
+            <button type="button" id="new-ingredient" class="primary add-item-button" aria-label="Add ingredient" title="Add ingredient"><span aria-hidden="true">+</span></button>
           </div>
           <div class="table-wrap mobile-card-table">
             <table id="ingredient-table">
@@ -125,17 +120,15 @@
               <tbody id="ingredient-table-body"></tbody>
             </table>
           </div>
+          <div class="receipt-pagination" aria-label="Ingredient pages">
+            <button type="button" id="ingredient-page-prev" class="secondary">Previous</button>
+            <span id="ingredient-page-label" aria-live="polite"></span>
+            <button type="button" id="ingredient-page-next" class="secondary">Next</button>
+          </div>
         </section>
 
-        <section id="dishes" class="panel">
-          <div class="section-header">
-            <div>
-              <h2>Dishes</h2>
-              <p>Create reusable meals by linking them to ingredients and quantities.</p>
-            </div>
-            <button type="button" id="new-dish" class="primary add-item-button" aria-label="Add dish" title="Add dish"><span aria-hidden="true">+</span></button>
-          </div>
-
+        <section id="dishes" class="panel" aria-label="Dishes">
+          <h2 class="mobile-panel-title">Dishes</h2>
           <form id="dish-form" class="card-form" hidden>
             <input type="hidden" id="dish-id" />
             <div class="field-grid">
@@ -198,20 +191,23 @@
           </form>
 
           <div class="collection-toolbar">
-            <label for="dish-search">
-              <span>Search meals</span>
-              <input id="dish-search" type="search" placeholder="Search by name or ingredient" />
-            </label>
-            <label for="dish-sort">
-              <span>Sort by</span>
-              <select id="dish-sort" data-searchable="false">
-                <option value="historical">Historical ranking</option>
-                <option value="name">Dish name (A–Z)</option>
-                <option value="type">Type (A–Z)</option>
-                <option value="cost-asc">Cost (low to high)</option>
-                <option value="cost-desc">Cost (high to low)</option>
-              </select>
-            </label>
+            <div class="collection-filters">
+              <label for="dish-search">
+                <span>Search meals</span>
+                <input id="dish-search" type="search" placeholder="Search by name or ingredient" />
+              </label>
+              <label for="dish-sort">
+                <span>Sort by</span>
+                <select id="dish-sort" data-searchable="false">
+                  <option value="historical">Historical ranking</option>
+                  <option value="name">Dish name (A–Z)</option>
+                  <option value="type">Type (A–Z)</option>
+                  <option value="cost-asc">Cost (low to high)</option>
+                  <option value="cost-desc">Cost (high to low)</option>
+                </select>
+              </label>
+            </div>
+            <button type="button" id="new-dish" class="primary add-item-button" aria-label="Add dish" title="Add dish"><span aria-hidden="true">+</span></button>
           </div>
           <div class="table-wrap mobile-card-table dish-table-wrap">
             <table id="dish-table">
@@ -227,21 +223,21 @@
               <tbody id="dish-table-body"></tbody>
             </table>
           </div>
+          <div class="receipt-pagination" aria-label="Dish pages">
+            <button type="button" id="dish-page-prev" class="secondary">Previous</button>
+            <span id="dish-page-label" aria-live="polite"></span>
+            <button type="button" id="dish-page-next" class="secondary">Next</button>
+          </div>
         </section>
 
-        <section id="planner" class="panel">
-          <div class="section-header">
-            <div class="planner-title-row">
-              <h2>Weekly Planner</h2>
-              <button type="button" id="randomize-week" class="secondary randomize-week" aria-label="Randomize week" title="Randomize week">
-                <span aria-hidden="true">🎲</span>
-              </button>
-            </div>
-          </div>
-
+        <section id="planner" class="panel" aria-label="Weekly Planner">
+          <h2 class="mobile-panel-title">Weekly Planner</h2>
           <section class="weekly-plan-section" aria-labelledby="weekly-plan-title">
             <div class="weekly-plan-heading">
               <h3 id="weekly-plan-title" aria-live="polite">Meals planned (0)</h3>
+              <button type="button" id="randomize-week" class="secondary randomize-week" aria-label="Randomize week" title="Randomize week">
+                <span aria-hidden="true">🎲</span>
+              </button>
               <button type="button" id="remove-all-meals" class="danger planner-section-remove" aria-label="Remove all meals" title="Remove all meals from the weekly planner">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
               </button>
@@ -259,13 +255,15 @@
           </section>
         </section>
 
-        <section id="analytics" class="panel">
-          <div class="section-header analytics-section-header">
-            <h2>Shopping analytics</h2>
-            <div id="receipt-summary" class="receipt-summary"></div>
+        <section id="analytics" class="panel" aria-label="Shopping analytics">
+          <h2 class="mobile-panel-title">Shopping analytics</h2>
+          <div class="receipt-tab-bar">
+            <div class="receipt-tabs" role="tablist" aria-label="Receipt analytics views">
+              <button type="button" id="receipt-tab-spending" class="receipt-tab active" role="tab" aria-selected="true" aria-controls="receipt-panel-spending" data-receipt-tab="spending">Spending</button>
+              <button type="button" id="receipt-tab-insights" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-insights" data-receipt-tab="insights" tabindex="-1">Insights</button>
+              <button type="button" id="receipt-tab-all-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-all-items" data-receipt-tab="all-items" tabindex="-1">Mappings</button>
+            </div>
           </div>
-          <p id="receipt-uncategorized-alert" class="receipt-uncategorized-alert" role="status" hidden></p>
-          <p id="receipt-status" class="status-message" role="status" aria-live="polite"></p>
           <div class="receipt-analytics-toolbar">
             <select id="receipt-year-filter" aria-label="Filter by year" data-searchable="false" disabled>
               <option value="">Select year</option>
@@ -273,27 +271,22 @@
             <select id="receipt-category-filter" aria-label="Filter by category" data-searchable="false" disabled>
               <option value="">All categories</option>
             </select>
+            <select id="receipt-supermarket-filter" aria-label="Filter by supermarket" data-searchable="false" disabled>
+              <option value="">All supermarkets</option>
+            </select>
             <input id="receipt-item-search" type="search" aria-label="Filter by item" placeholder="Filter by item" disabled />
           </div>
-          <div class="receipt-tabs" role="tablist" aria-label="Receipt analytics views">
-            <button type="button" id="receipt-tab-spending" class="receipt-tab active" role="tab" aria-selected="true" aria-controls="receipt-panel-spending" data-receipt-tab="spending">Spending</button>
-            <button type="button" id="receipt-tab-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-items" data-receipt-tab="items" tabindex="-1">Top items</button>
-            <button type="button" id="receipt-tab-categories" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-categories" data-receipt-tab="categories" tabindex="-1">Categories</button>
-            <button type="button" id="receipt-tab-supermarkets" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-supermarkets" data-receipt-tab="supermarkets" tabindex="-1">Supermarkets</button>
-            <button type="button" id="receipt-tab-all-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-all-items" data-receipt-tab="all-items" tabindex="-1">Mappings</button>
-          </div>
+          <p id="receipt-uncategorized-alert" class="receipt-uncategorized-alert" role="status" hidden></p>
+          <p id="receipt-status" class="status-message" role="status" aria-live="polite"></p>
           <section id="receipt-panel-spending" class="receipt-tab-panel active" role="tabpanel" aria-labelledby="receipt-tab-spending">
-            <section class="receipt-card">
-              <div class="receipt-card-heading">
-                <div>
-                  <p class="eyebrow">SPENDING OVER TIME</p>
-                  <h3>Spend by shopping date</h3>
-                </div>
-                <span class="ranking-caption">Select a bar to see its receipt items</span>
-              </div>
-              <div id="receipt-spending-chart" class="receipt-spending-chart" aria-label="Total spend by shopping date"></div>
+            <div id="receipt-kpis" class="receipt-kpis"></div>
+            <div id="receipt-summary" class="receipt-summary"></div>
+            <section class="receipt-card receipt-calendar-card">
+              <h3 id="receipt-calendar-title"></h3>
+              <div id="receipt-calendar" class="receipt-calendar" aria-labelledby="receipt-calendar-title"></div>
+              <p id="receipt-calendar-details" class="receipt-calendar-details" aria-live="polite">Hover over or focus a shopping day for details.</p>
             </section>
-            <section class="receipt-card">
+            <section id="receipt-date-card" class="receipt-card" hidden>
               <div class="receipt-card-heading">
                 <div>
                   <p class="eyebrow">SELECTED SHOPPING DATE</p>
@@ -312,50 +305,34 @@
               </div>
             </section>
           </section>
-          <section id="receipt-panel-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-items" hidden>
+          <section id="receipt-panel-insights" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-insights" hidden>
+            <div class="receipt-insights-layout">
             <section class="receipt-card">
-              <div class="receipt-card-heading">
-                <div>
-                  <p class="eyebrow">MOST FREQUENTLY PURCHASED</p>
-                  <h3>Top bought items</h3>
-                  <p>Ranked by total spend. Quantities are grouped by unit.</p>
-                </div>
-              </div>
+              <div class="receipt-card-heading"><h3>Top Items</h3></div>
               <div class="table-wrap mobile-card-table">
-                <table>
-                  <thead><tr><th>Item</th><th>Amount bought</th><th>Purchases</th><th>Total spend</th><th>Category</th></tr></thead>
+                <table aria-label="Top bought items">
+                  <thead><tr><th>Item</th><th>Total spend</th></tr></thead>
                   <tbody id="receipt-top-items"></tbody>
                 </table>
               </div>
+              <div class="receipt-pagination">
+                <button type="button" id="receipt-top-prev" class="secondary">Previous</button>
+                <span id="receipt-top-label" aria-live="polite"></span>
+                <button type="button" id="receipt-top-next" class="secondary">Next</button>
+              </div>
             </section>
-          </section>
-          <section id="receipt-panel-categories" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-categories" hidden>
             <section class="receipt-card">
               <div class="receipt-card-heading">
                 <div>
-                  <p class="eyebrow">CATEGORY BREAKDOWN</p>
-                  <h3>Spend by category</h3>
+                  <p class="eyebrow">SPENDING BREAKDOWN</p>
+                  <h3 id="receipt-insights-title">Spend by category</h3>
                 </div>
+                <button type="button" id="receipt-insights-toggle" class="secondary" aria-pressed="false">Show supermarkets</button>
               </div>
               <div id="receipt-category-summary" class="receipt-category-summary"></div>
+              <div id="receipt-supermarket-summary" class="receipt-supermarket-summary" hidden></div>
             </section>
-          </section>
-          <section id="receipt-panel-supermarkets" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-supermarkets" hidden>
-            <section class="receipt-card">
-              <div class="receipt-card-heading">
-                <div>
-                  <p class="eyebrow">SUPERMARKET BREAKDOWN</p>
-                  <h3>Spend and discounts by supermarket</h3>
-                  <p>Discounts include regular and Netto Plus discounts.</p>
-                </div>
-              </div>
-              <div class="table-wrap mobile-card-table">
-                <table>
-                  <thead><tr><th>Supermarket</th><th>Total spend</th><th>Total discount</th></tr></thead>
-                  <tbody id="receipt-supermarket-summary"></tbody>
-                </table>
-              </div>
-            </section>
+            </div>
           </section>
           <section id="receipt-panel-all-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-all-items" hidden>
             <section class="receipt-card">
@@ -363,15 +340,21 @@
                 <div>
                   <p class="eyebrow">ITEM DIMENSION</p>
                   <h3>Mappings</h3>
-                  <p>Search items and assign or update their categories. Type a category name to add it.</p>
+                  <p>Review suggested categories or assign them manually. Suggestions are never saved automatically.</p>
                 </div>
               </div>
+              <label class="receipt-review-filter"><input type="checkbox" id="receipt-review-only" /> Show only items needing a category</label>
               <datalist id="receipt-category-suggestions"></datalist>
               <div class="table-wrap mobile-card-table">
                 <table>
                   <thead><tr><th>Item</th><th>Purchases</th><th>Total spend</th><th>Category</th></tr></thead>
                   <tbody id="receipt-all-items"></tbody>
                 </table>
+              </div>
+              <div class="receipt-pagination">
+                <button type="button" id="receipt-page-prev" class="secondary">Previous</button>
+                <span id="receipt-page-label" aria-live="polite"></span>
+                <button type="button" id="receipt-page-next" class="secondary">Next</button>
               </div>
             </section>
           </section>
@@ -389,9 +372,9 @@
           </dialog>
         </section>
 
-        <section id="shopping" class="panel active">
+        <section id="shopping" class="panel active" aria-label="Shopping List">
+          <h2 class="mobile-panel-title">Shopping List</h2>
           <div class="section-header">
-            <h2>Shopping List</h2>
             <div id="shopping-summary" class="shopping-summary"></div>
           </div>
           <div id="shopping-list" class="shopping-list"></div>
@@ -402,6 +385,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
     <script src="js/script.js"></script>
-    <script src="js/receipt-analytics.js?v=4"></script>
+    <script src="js/receipt-analytics.js?v=16"></script>
   </body>
 </html>

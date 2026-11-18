@@ -239,6 +239,9 @@ const panels = document.querySelectorAll('.panel');
 const ingredientForm = document.getElementById('ingredient-form');
 const ingredientTableBody = document.getElementById('ingredient-table-body');
 const ingredientSearchInput = document.getElementById('ingredient-search');
+const ingredientPagePrev = document.getElementById('ingredient-page-prev');
+const ingredientPageNext = document.getElementById('ingredient-page-next');
+const ingredientPageLabel = document.getElementById('ingredient-page-label');
 const ingredientIdInput = document.getElementById('ingredient-id');
 const ingredientNameInput = document.getElementById('ingredient-name');
 const ingredientCategoryInput = document.getElementById('ingredient-category');
@@ -256,6 +259,11 @@ const dishForm = document.getElementById('dish-form');
 const dishTableBody = document.getElementById('dish-table-body');
 const dishSearchInput = document.getElementById('dish-search');
 const dishSortSelect = document.getElementById('dish-sort');
+const dishPagePrev = document.getElementById('dish-page-prev');
+const dishPageNext = document.getElementById('dish-page-next');
+const dishPageLabel = document.getElementById('dish-page-label');
+const collectionPages = { ingredients: 0, dishes: 0 };
+const collectionPageSize = 10;
 const dishIdInput = document.getElementById('dish-id');
 const dishNameInput = document.getElementById('dish-name');
 const dishTypeInput = document.getElementById('dish-type');
@@ -503,9 +511,22 @@ function bindDefaultValues() {
 
   newIngredientButton.addEventListener('click', openNewIngredientForm);
   newDishButton.addEventListener('click', openNewDishForm);
-  ingredientSearchInput.addEventListener('input', renderIngredients);
-  dishSearchInput.addEventListener('input', renderDishes);
-  dishSortSelect.addEventListener('change', renderDishes);
+  ingredientSearchInput.addEventListener('input', () => {
+    collectionPages.ingredients = 0;
+    renderIngredients();
+  });
+  dishSearchInput.addEventListener('input', () => {
+    collectionPages.dishes = 0;
+    renderDishes();
+  });
+  dishSortSelect.addEventListener('change', () => {
+    collectionPages.dishes = 0;
+    renderDishes();
+  });
+  ingredientPagePrev.addEventListener('click', () => { collectionPages.ingredients -= 1; renderIngredients(); });
+  ingredientPageNext.addEventListener('click', () => { collectionPages.ingredients += 1; renderIngredients(); });
+  dishPagePrev.addEventListener('click', () => { collectionPages.dishes -= 1; renderDishes(); });
+  dishPageNext.addEventListener('click', () => { collectionPages.dishes += 1; renderDishes(); });
   enhanceSearchableSelects(document);
 
   addDishIngredientButton.addEventListener('click', () => {
@@ -803,7 +824,8 @@ function renderIngredients() {
     `${ingredient.name} ${ingredient.category}`.toLowerCase().includes(searchTerm)
   );
 
-  filteredIngredients.forEach((ingredient) => {
+  const start = updateCollectionPagination('ingredients', filteredIngredients.length, ingredientPagePrev, ingredientPageNext, ingredientPageLabel);
+  filteredIngredients.slice(start, start + collectionPageSize).forEach((ingredient) => {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td data-label="Ingredient">
@@ -834,6 +856,15 @@ function renderIngredients() {
   ingredientTableBody.querySelectorAll('[data-remove-ingredient]').forEach((button) => {
     button.addEventListener('click', () => runAppAction(() => removeIngredient(button.dataset.removeIngredient)));
   });
+}
+
+function updateCollectionPagination(name, count, previous, next, label) {
+  const pages = Math.max(1, Math.ceil(count / collectionPageSize));
+  collectionPages[name] = Math.max(0, Math.min(collectionPages[name], pages - 1));
+  previous.disabled = collectionPages[name] === 0;
+  next.disabled = collectionPages[name] === pages - 1;
+  label.textContent = `Page ${collectionPages[name] + 1} of ${pages} (${count} items)`;
+  return collectionPages[name] * collectionPageSize;
 }
 
 function populateIngredientForm(id) {
@@ -925,9 +956,12 @@ function renderDishes() {
   }).filter((dish) => `${dish.name} ${dish.dish_type || ''} ${dish.ingredients.map((ingredient) => ingredient.name || '').join(' ')}`
     .toLowerCase()
     .includes(searchTerm));
-  let visibleRank = 0;
+  const start = updateCollectionPagination('dishes', sortedDishes.length, dishPagePrev, dishPageNext, dishPageLabel);
+  let visibleRank = sortMode === 'historical'
+    ? sortedDishes.slice(0, start).filter((dish) => getRankingCount(dish) > 0 && !isLeftoversDish(dish)).length
+    : 0;
 
-  sortedDishes.forEach((dish) => {
+  sortedDishes.slice(start, start + collectionPageSize).forEach((dish) => {
     const row = document.createElement('tr');
     const rating = Number(dish.rating) || 0;
     const ratingLabel = rating ? '★'.repeat(rating) : '';
@@ -1725,25 +1759,14 @@ function renderShoppingList() {
 }
 
 async function clearShoppingChecks() {
-  const checkedKeys = [...shoppingList.querySelectorAll('[data-shopping-check]:checked')]
-    .map((checkbox) => checkbox.dataset.shoppingCheck);
-  if (!checkedKeys.length) {
-    return;
-  }
-
-  const { error } = await supabaseClient.from('shopping_checks').upsert(
-    checkedKeys.map((check_key) => ({
-      user_id: sharedOwnerId,
-      check_key,
-      checked: false
-    })),
-    { onConflict: 'check_key' }
-  );
+  const { error } = await supabaseClient.from('shopping_checks')
+    .update({ checked: false })
+    .eq('checked', true);
   if (error) {
     throw error;
   }
 
-  checkedKeys.forEach((key) => {
+  Object.keys(state.shoppingChecks).forEach((key) => {
     state.shoppingChecks[key] = false;
   });
   renderShoppingList();

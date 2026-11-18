@@ -129,6 +129,10 @@ button {
   display: block;
 }
 
+.mobile-panel-title {
+  display: none;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -1204,18 +1208,6 @@ body {
   letter-spacing: -0.045em;
 }
 
-.planner-title-row {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.planner-title-row h2 {
-  margin: 0;
-}
-
 .section-header p {
   line-height: 1.55;
 }
@@ -1811,10 +1803,22 @@ tbody tr:hover {
 
 .collection-toolbar {
   display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  justify-content: flex-start;
+  margin: -5px 0 12px;
+}
+
+.collection-filters {
+  display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   gap: 14px;
-  justify-content: flex-end;
-  margin: -5px 0 12px;
+}
+
+.collection-toolbar .add-item-button {
+  flex: 0 0 42px;
+  margin-left: auto;
 }
 
 .collection-toolbar label {
@@ -2065,6 +2069,15 @@ tbody tr:hover {
     justify-content: space-between;
   }
 
+  .collection-filters {
+    flex: 1;
+  }
+
+  .collection-toolbar select {
+    width: 100%;
+    min-width: 0;
+  }
+
   .collection-toolbar input[type="search"] {
     width: auto;
     min-width: 0;
@@ -2264,6 +2277,14 @@ tbody tr:hover {
   padding: 0;
   font-size: 1.15rem;
   line-height: 1;
+}
+
+.weekly-plan-heading .randomize-week {
+  margin-left: auto;
+}
+
+.weekly-plan-heading .planner-section-remove {
+  margin-left: 0;
 }
 
 @media (max-width: 640px) {
@@ -2730,10 +2751,6 @@ body[data-theme="dark"] .weekly-chart-count {
   min-height: 42px;
 }
 
-.analytics-section-header .receipt-summary {
-  flex: 0 1 440px;
-}
-
 .receipt-tabs {
   display: flex;
   gap: 7px;
@@ -2758,7 +2775,6 @@ body[data-theme="dark"] .weekly-chart-count {
 }
 
 .receipt-tab:focus-visible,
-.receipt-bar-column:focus-visible,
 .receipt-month-column:focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 3px;
@@ -2824,7 +2840,7 @@ body[data-theme="dark"] .weekly-chart-count {
   background: linear-gradient(180deg, #9dcc8b, #34815f);
 }
 
-.receipt-month-count,
+.receipt-month-value,
 .receipt-month-label {
   max-width: 100%;
   overflow: hidden;
@@ -2892,75 +2908,6 @@ body[data-theme="dark"] .weekly-chart-count {
   font-size: 0.75rem;
 }
 
-.receipt-spending-chart {
-  display: flex;
-  min-height: 270px;
-  align-items: stretch;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 18px 4px 8px;
-}
-
-.receipt-bar-column {
-  display: grid;
-  min-width: 82px;
-  flex: 0 0 82px;
-  grid-template-rows: 28px minmax(120px, 1fr) 32px;
-  justify-items: center;
-  padding: 0 3px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text);
-}
-
-.receipt-bar-column[aria-pressed="true"] {
-  background: var(--panel-alt);
-}
-
-.receipt-bar-value {
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 0.67rem;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.receipt-bar-track {
-  display: flex;
-  width: 34px;
-  height: 100%;
-  align-items: end;
-  overflow: hidden;
-  border-radius: 8px 8px 3px 3px;
-  background: var(--panel-alt);
-}
-
-.receipt-bar-fill {
-  display: block;
-  width: 100%;
-  min-height: 4px;
-  border-radius: 7px 7px 2px 2px;
-  background: linear-gradient(180deg, #72a878, #2f795e);
-  transition: height 0.2s ease;
-}
-
-.receipt-bar-column[aria-pressed="true"] .receipt-bar-fill {
-  background: linear-gradient(180deg, #9dcc8b, #34815f);
-}
-
-.receipt-bar-date {
-  max-width: 100%;
-  overflow: hidden;
-  align-self: end;
-  color: var(--muted);
-  font-size: 0.68rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .receipt-card .table-wrap {
   box-shadow: none;
 }
@@ -2989,19 +2936,42 @@ body[data-theme="dark"] .weekly-chart-count {
   gap: 7px;
 }
 
-.receipt-top-item-category {
-  min-width: 0;
-  justify-content: space-between;
-}
-
-.receipt-top-item-category > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
 .receipt-card .receipt-item-category-control input[type="text"] {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.receipt-review-filter {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+
+.receipt-review-filter input {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--primary);
+}
+
+.receipt-category-recommendation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.receipt-category-recommendation button {
+  padding: 5px 9px;
 }
 
 .receipt-price-trend-button {
@@ -3116,58 +3086,16 @@ body[data-theme="dark"] .weekly-chart-count {
   gap: 13px;
 }
 
-.receipt-category-row {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(90px, 2fr) auto;
-  align-items: center;
-  gap: 14px;
-}
-
-.receipt-category-row > div {
-  display: grid;
-  gap: 3px;
-}
-
-.receipt-category-row > div span {
-  color: var(--muted);
-  font-size: 0.74rem;
-}
-
-.receipt-category-row > strong:last-child {
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.receipt-category-meter {
-  display: block;
-  height: 9px;
-  overflow: hidden;
-  border-radius: 99px;
-  background: var(--panel-alt);
-}
-
-.receipt-category-meter span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #72a878, #2f795e);
-}
-
 @media (max-width: 640px) {
   .receipt-card {
     padding: 16px;
-  }
-
-  .analytics-section-header .receipt-summary {
-    width: 100%;
-    flex: 0 1 auto;
   }
 
   .receipt-monthly-chart {
     gap: 2px;
   }
 
-  .receipt-month-count,
+  .receipt-month-value,
   .receipt-month-label {
     font-size: 0.5rem;
   }
@@ -3180,16 +3108,6 @@ body[data-theme="dark"] .weekly-chart-count {
   .receipt-analytics-toolbar select,
   .receipt-analytics-toolbar input {
     width: 100%;
-  }
-
-  .receipt-category-row {
-    grid-template-columns: minmax(90px, 1fr) auto;
-    gap: 8px;
-  }
-
-  .receipt-category-meter {
-    grid-column: 1 / -1;
-    grid-row: 2;
   }
 
   .receipt-card-heading {
@@ -3232,4 +3150,384 @@ body[data-theme="dark"] .shopping-item-check input {
 body[data-theme="dark"] .shopping-item-check input:checked {
   border-color: var(--primary);
   background: var(--primary);
+}
+
+@media (min-width: 901px) {
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+  }
+
+  .signed-in-user {
+    min-width: 0;
+    flex: 1;
+    margin: 0;
+  }
+}
+
+.sign-out {
+  display: grid;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  place-items: center;
+  margin: 0;
+  padding: 7px;
+}
+
+.sign-out-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.receipt-analytics-toolbar {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.receipt-tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-tabs {
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.receipt-kpis,
+.receipt-insights-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.receipt-kpi {
+  display: grid;
+  gap: 6px;
+}
+
+.receipt-kpi span,
+.receipt-kpi small {
+  color: var(--muted);
+}
+
+.receipt-kpi strong {
+  font-size: 1.5rem;
+}
+
+.receipt-insights-layout {
+  align-items: start;
+}
+
+#receipt-panel-insights .receipt-card td,
+#receipt-panel-insights .receipt-card th {
+  padding: 8px 6px;
+  font-size: 0.8rem;
+}
+
+.receipt-top-item-details {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.receipt-top-item-spend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.receipt-category-summary[hidden],
+.receipt-supermarket-summary[hidden] {
+  display: none;
+}
+
+.receipt-supermarket-summary {
+  display: grid;
+  gap: 13px;
+}
+
+.receipt-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .sidebar nav {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    flex-direction: column;
+    max-height: 1000px;
+    margin-top: 0;
+    padding: 8px 22px;
+    overflow: hidden;
+    background: #193c32;
+    box-shadow: var(--shadow);
+  }
+
+  .sidebar nav .nav-btn {
+    width: 100%;
+    text-align: left;
+  }
+
+  .sidebar:not(.menu-open) .sidebar-nav {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .receipt-insights-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .mobile-panel-title {
+    display: block;
+    margin: 0 0 16px;
+    font-size: 1.5rem;
+  }
+
+  .receipt-analytics-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-kpis {
+    gap: 8px;
+  }
+
+  .receipt-kpi strong {
+    font-size: 1.1rem;
+  }
+}
+
+#receipt-panel-spending.active {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#receipt-panel-spending > .receipt-kpis,
+#receipt-panel-spending > #receipt-date-card {
+  grid-column: 1 / -1;
+}
+
+.receipt-summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-monthly-chart {
+  min-height: 190px;
+  flex: 1;
+}
+
+.receipt-month-column {
+  grid-template-rows: 80px minmax(60px, 1fr) 16px;
+}
+
+.receipt-month-label {
+  font-size: 0.7rem;
+}
+
+.receipt-month-value {
+  align-self: end;
+  font-size: 0.65rem;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.receipt-calendar-card {
+  padding: 14px;
+}
+
+.receipt-calendar-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.receipt-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.receipt-calendar-weekday {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.receipt-calendar-day {
+  display: grid;
+  min-height: 30px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-alt);
+  color: var(--muted);
+}
+
+.receipt-calendar-shopping {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+}
+
+.receipt-calendar-shopping:hover,
+.receipt-calendar-shopping[aria-pressed="true"] {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.receipt-calendar-shopping:focus-visible,
+.receipt-bar:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.receipt-calendar-details,
+.receipt-bar-detail {
+  min-height: 2.5em;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.receipt-calendar-details {
+  margin-top: 8px;
+}
+
+.receipt-insights-layout {
+  align-items: stretch;
+}
+
+.receipt-bar-chart {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.receipt-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--panel-alt);
+  color: var(--text);
+  text-align: left;
+}
+
+.receipt-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--primary);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.receipt-bar:hover .receipt-bar-fill,
+.receipt-bar[aria-pressed="true"] .receipt-bar-fill,
+.receipt-bar:focus-visible .receipt-bar-fill {
+  opacity: 0.45;
+}
+
+.receipt-bar[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.receipt-bar-label,
+.receipt-bar-amount {
+  position: relative;
+  font-size: 0.8rem;
+}
+
+.receipt-bar-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receipt-bar-amount {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .receipt-tab-bar {
+    position: sticky;
+    top: var(--receipt-nav-top, 0px);
+    z-index: 19;
+    background: var(--bg);
+  }
+}
+
+@media (max-width: 640px) {
+  .receipt-tab-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .receipt-tab {
+    padding: 0 7px;
+    font-size: 0.75rem;
+  }
+
+  #receipt-panel-spending.active {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #receipt-panel-spending > .receipt-summary,
+  #receipt-panel-spending > .receipt-calendar-card {
+    grid-column: 1;
+  }
+
+  .receipt-calendar {
+    gap: 4px;
+  }
+
+  .receipt-calendar-day {
+    min-height: 30px;
+  }
 }
