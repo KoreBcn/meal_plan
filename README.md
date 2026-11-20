@@ -14,8 +14,8 @@ A shared meal planner backed by Supabase. Household members see the same ingredi
 
 ## Supabase setup and data import
 
-1. Enable Email sign-in in **Authentication → Providers** and add `http://localhost:8001` to **Authentication → URL Configuration**.
-2. Make sure both household accounts have signed up and confirmed their email addresses before the import. The import authorizes all currently confirmed Supabase accounts; accounts created later must be added by an administrator.
+1. Enable Email sign-in in **Authentication → Providers**, disable user signups in **Authentication → Providers → Email**, and add `http://localhost:8001` to **Authentication → URL Configuration**.
+2. Create and confirm each household account manually in **Authentication → Users** in the Supabase dashboard. The import authorizes all currently confirmed Supabase accounts; later accounts must be added manually and can be authorized by rerunning or updating the membership import.
 3. In the Supabase SQL Editor, run [`supabase/supabase-import.sql`](./supabase/supabase-import.sql). It includes the schema/security updates, replaces existing app data for all accounts, and imports the spreadsheet into one shared plan. It runs in a transaction; if validation fails, the changes roll back. Review the script before running it.
 
 The source's unit column was blank, so imported ingredients use the generic `unit` label. Where a name had conflicting prices, the import uses the highest listed price.

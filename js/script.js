@@ -227,7 +227,6 @@ const authForm = document.getElementById('auth-form');
 const authEmailInput = document.getElementById('auth-email');
 const authPasswordInput = document.getElementById('auth-password');
 const authStatus = document.getElementById('auth-status');
-const signUpButton = document.getElementById('sign-up');
 const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.querySelector('.sidebar');
 const appShell = document.querySelector('.app-shell');
@@ -314,25 +313,6 @@ async function init() {
       throw error;
     }
   }));
-
-  signUpButton.addEventListener('click', () => {
-    if (!authForm.reportValidity()) {
-      return;
-    }
-    runAuthAction(async () => {
-      const { data, error } = await supabaseClient.auth.signUp({
-        email: authEmailInput.value.trim(),
-        password: authPasswordInput.value,
-        options: { emailRedirectTo: window.location.origin }
-      });
-      if (error) {
-        throw error;
-      }
-      if (!data.session) {
-        showMessage(authStatus, 'Account created. Check your email to confirm your account.');
-      }
-    });
-  });
 
   signOutButton.addEventListener('click', () => runAppAction(async () => {
     const { error } = await supabaseClient.auth.signOut();
