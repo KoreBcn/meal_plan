@@ -1601,15 +1601,16 @@ function renderShoppingList() {
 
   shoppingSummary.innerHTML = `
     <div class="summary-card">
-      <span>Items</span>
+      <span class="shopping-item-count-label">Items</span>
       <strong>${checkedItems}/${totalItems}</strong>
     </div>
     <div class="summary-card">
-      <span>Estimated cost</span>
+      <span class="shopping-estimated-label">Estimated cost</span>
+      <span class="shopping-estimated-short" aria-hidden="true">Est.</span>
       <strong>kr. ${Math.round(totalEstimatedCost).toLocaleString()}</strong>
     </div>
     <button type="button" class="summary-card shopping-clear-checks" data-shopping-clear-checks aria-label="Untick all checked shopping items" title="Untick all checked shopping items">
-      Clear checks
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="13" height="13" rx="2"/><path d="m6 9 2.5 2.5L13 7"/><path d="m17 17 4 4m0-4-4 4"/></svg>
     </button>
   `;
 

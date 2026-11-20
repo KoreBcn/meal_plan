@@ -1,6 +1,6 @@
 {
-  "name": "Meal Plan",
-  "short_name": "A&C",
+  "name": "Mealwise",
+  "short_name": "Mealwise",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#193c32",

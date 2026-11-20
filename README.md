@@ -1,4 +1,4 @@
-# Meal Plan Planner
+# Mealwise
 
 A shared meal planner backed by Supabase. Household members see the same ingredients, dishes, weekly plan, and shopping checklist. Shopping-list checks and planner changes sync live between open screens.
 
@@ -38,7 +38,7 @@ python scripts/receipt_server.py
 
 Then open http://localhost:8001 and sign in. The app reads and writes meal-plan and receipt analytics data to Supabase. The local server only serves the app and listens on loopback.
 
-When the app is hosted over HTTPS, add it to your mobile home screen from the browser menu to use the A&C icon. An existing home-screen shortcut may need to be removed and added again to refresh its icon.
+When the app is hosted over HTTPS, add it to your mobile home screen from the browser menu to use the A&C icon. An existing home-screen shortcut may need to be removed and added again to refresh its name or icon.
 
 ## Gmail receipt import setup
 

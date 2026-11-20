@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meal Plan Planner</title>
+    <title>Mealwise</title>
     <meta name="theme-color" content="#193c32" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="A&amp;C" />
+    <meta name="apple-mobile-web-app-title" content="Mealwise" />
     <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
     <link rel="apple-touch-icon" href="assets/app-icon-180.png" />
-    <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="stylesheet" href="style.css?v=24" />
+    <link rel="manifest" href="manifest.webmanifest?v=2" />
+    <link rel="stylesheet" href="style.css?v=26" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
-      <h1>Meal Plan</h1>
+      <h1>Mealwise</h1>
       <p>Sign in to access your meal plan.</p>
       <form id="auth-form" class="card-form">
         <label>
@@ -35,10 +35,13 @@
     <div class="app-shell" hidden>
       <aside class="sidebar">
         <div class="sidebar-top">
-          <a class="brand" href="#" aria-label="Meal Plan home">
+          <a class="brand" href="#" aria-label="Mealwise home">
             <img class="brand-mark" src="assets/app-icon.svg" alt="" />
-            <span>Meal Plan</span>
+            <span>Mealwise</span>
           </a>
+          <button type="button" id="sign-out" class="secondary sign-out" aria-label="Sign out" title="Sign out">
+            <svg class="sign-out-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+          </button>
           <button type="button" id="menu-toggle" class="menu-toggle" aria-controls="primary-navigation" aria-expanded="false" aria-label="Open navigation menu">
             <span aria-hidden="true"></span>
             <span aria-hidden="true"></span>
@@ -54,9 +57,6 @@
         </nav>
         <div class="sidebar-account">
           <p id="signed-in-user" class="signed-in-user"></p>
-          <button type="button" id="sign-out" class="secondary sign-out" aria-label="Sign out" title="Sign out">
-            <svg class="sign-out-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
-          </button>
         </div>
       </aside>
 
@@ -362,8 +362,8 @@
         </section>
 
         <section id="shopping" class="panel active" aria-label="Shopping List">
-          <h2 class="mobile-panel-title">Shopping List</h2>
           <div class="section-header">
+            <h2 class="mobile-panel-title">Shopping List</h2>
             <div id="shopping-summary" class="shopping-summary"></div>
           </div>
           <div id="shopping-list" class="shopping-list"></div>
@@ -373,7 +373,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
-    <script src="js/script.js?v=2"></script>
+    <script src="js/script.js?v=3"></script>
     <script src="js/receipt-analytics.js?v=25"></script>
   </body>
 </html>

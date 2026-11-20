@@ -744,6 +744,21 @@ test('KPIs and charts round values without rounding receipt details', () => {
   assert.ok(!trend.includes(exactMoney.format(10.75)));
 });
 
+test('shopping summary renders an accessible clear-checks icon', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'script.js'), 'utf8');
+  const renderFunction = source.match(/function renderShoppingList\(\) \{[\s\S]*?\n\}/)[0];
+  const context = vm.createContext({
+    dayNames: [],
+    state: { plan: {}, dishes: [], manualShoppingItems: [], shoppingChecks: {} },
+    shoppingSummary: {},
+    shoppingList: { classList: { toggle() {} }, style: { removeProperty() {} } }
+  });
+  vm.runInContext(`${renderFunction}; renderShoppingList()`, context);
+  assert.match(context.shoppingSummary.innerHTML, /data-shopping-clear-checks aria-label="Untick all checked shopping items"/);
+  assert.match(context.shoppingSummary.innerHTML, /<svg[^>]*aria-hidden="true"/);
+  assert.doesNotMatch(context.shoppingSummary.innerHTML, />\s*Clear checks\s*</);
+});
+
 test('clear checks updates all persisted checked rows, including hidden items', async () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'script.js'), 'utf8');
   const clearFunction = source.match(/async function clearShoppingChecks\(\) \{[\s\S]*?\n\}/)[0];

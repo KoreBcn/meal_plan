@@ -902,12 +902,28 @@ tbody tr:hover {
   font-weight: 600;
 }
 
+.shopping-estimated-short {
+  display: none;
+}
+
 .summary-card.shopping-clear-checks {
   display: grid;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
   place-items: center;
+  padding: 8px;
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 600;
+}
+
+.shopping-clear-checks svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .summary-card.shopping-clear-checks:hover:not(:disabled) {
@@ -1550,7 +1566,7 @@ tbody tr:hover {
   .sidebar-top {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 16px;
   }
 
@@ -1560,22 +1576,11 @@ tbody tr:hover {
 
   .menu-toggle {
     display: inline-flex;
+    margin-left: auto;
   }
 
   .sidebar-account {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 12px;
-  }
-
-  .signed-in-user {
-    min-width: 0;
-    margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: none;
   }
 
   .sign-out {
@@ -1638,22 +1643,6 @@ tbody tr:hover {
 
   .brand {
     margin: 0;
-  }
-
-  .sidebar-account {
-    display: flex;
-    grid-column: 1 / -1;
-    grid-row: 2;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    min-width: 0;
-    margin-top: 8px;
-  }
-
-  .signed-in-user {
-    flex: 0 1 auto;
-    max-width: calc(100% - 40px);
   }
 
   .menu-toggle {
@@ -1735,7 +1724,7 @@ tbody tr:hover {
     min-width: 0;
     margin: 0;
     flex: 0 1 auto;
-    font-size: clamp(1.05rem, 5vw, 1.45rem);
+    font-size: clamp(0.95rem, 4.7vw, 1.3rem);
     white-space: nowrap;
   }
 
@@ -1743,17 +1732,36 @@ tbody tr:hover {
     min-width: 0;
     gap: 5px;
     flex: 0 1 auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-end;
   }
 
   #shopping .summary-card {
-    gap: 4px;
-    padding: 6px 7px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 4px 6px;
+    line-height: 1.2;
   }
 
   #shopping .summary-card > span {
     font-size: 0.62rem;
+  }
+
+  #shopping .shopping-item-count-label,
+  #shopping .shopping-estimated-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  #shopping .shopping-estimated-short {
+    display: block;
   }
 
   #shopping .summary-card strong {
@@ -1761,7 +1769,11 @@ tbody tr:hover {
   }
 
   #shopping .summary-card.shopping-clear-checks {
-    font-size: 0.62rem;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 7px;
   }
 
   .content > .status-message:empty {
@@ -3179,7 +3191,15 @@ body[data-theme="dark"] .shopping-item-check input:checked {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-height: 36px;
     margin-top: auto;
+    padding-right: 44px;
+  }
+
+  .sidebar-top .sign-out {
+    position: absolute;
+    right: 18px;
+    bottom: 30px;
   }
 
   .signed-in-user {
