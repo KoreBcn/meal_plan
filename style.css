@@ -3253,6 +3253,32 @@ body[data-theme="dark"] .shopping-item-check input:checked {
   border-bottom: 0;
 }
 
+.receipt-filters-toggle,
+body[data-theme="dark"] .receipt-filters-toggle {
+  display: none;
+  background: #193c32;
+  color: #e6eee8;
+}
+
+.receipt-filters-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.receipt-filters-toggle[aria-expanded="true"] .receipt-filters-slash {
+  display: none;
+}
+
+.receipt-filters-toggle:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .receipt-kpis,
 .receipt-insights-layout {
   display: grid;
@@ -3664,9 +3690,29 @@ body[data-theme="dark"] .shopping-item-check input:checked {
   }
 
   .receipt-tab-bar {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0;
+    align-items: center;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .receipt-tabs {
+    flex: 0 1 auto;
+  }
+
+  .receipt-filters-toggle,
+  body[data-theme="dark"] .receipt-filters-toggle {
+    display: grid;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    place-items: center;
+    padding: 8px;
+  }
+
+  .receipt-analytics-toolbar.receipt-filters-collapsed {
+    display: none;
   }
 
   .receipt-tab {

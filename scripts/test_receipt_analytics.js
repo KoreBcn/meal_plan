@@ -4,6 +4,14 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
+test('analytics is the default active navigation and panel', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(page, /class="nav-btn active" data-section="analytics"/);
+  assert.match(page, /id="analytics" class="panel active"/);
+  assert.match(page, /class="nav-btn" data-section="shopping"/);
+  assert.match(page, /id="shopping" class="panel"/);
+});
+
 test('spending details load and display supermarkets', async () => {
   const elements = new Map();
   const selections = {};
@@ -225,6 +233,39 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
   assert.doesNotMatch(elements.get('receipt-category-summary').innerHTML, /Bakery/);
   assert.doesNotMatch(elements.get('receipt-supermarket-summary').innerHTML, /Other/);
+
+  const filterToggle = elements.get('receipt-filters-toggle');
+  const toolbar = elements.get('receipt-analytics-toolbar');
+  const page = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(page, /id="receipt-filters-toggle"[^>]*aria-expanded="false"[^>]*aria-label="Show filters"/);
+  assert.match(page, /id="receipt-analytics-toolbar"[^>]*receipt-filters-collapsed/);
+  const toolbarClasses = new Set(['receipt-filters-collapsed']);
+  toolbar.classList.toggle = (name, enabled) => {
+    if (enabled) toolbarClasses.add(name);
+    else toolbarClasses.delete(name);
+  };
+  filterToggle.listeners.click();
+  assert.equal(filterToggle['aria-expanded'], 'true');
+  assert.equal(filterToggle['aria-label'], 'Hide filters');
+  assert.ok(!toolbarClasses.has('receipt-filters-collapsed'));
+  filterToggle.listeners.click();
+  assert.equal(filterToggle['aria-expanded'], 'false');
+  assert.equal(filterToggle['aria-label'], 'Show filters');
+  assert.equal(filterToggle.title, 'Show filters');
+  assert.ok(toolbarClasses.has('receipt-filters-collapsed'));
+  vm.runInContext("activateReceiptTab('all-items')", context);
+  assert.ok(toolbarClasses.has('receipt-filters-collapsed'));
+  assert.equal(elements.get('receipt-year-filter').hidden, true);
+  filterToggle.listeners.click();
+  assert.equal(filterToggle['aria-expanded'], 'true');
+  assert.equal(filterToggle['aria-label'], 'Hide filters');
+  assert.equal(filterToggle.title, 'Hide filters');
+  assert.ok(!toolbarClasses.has('receipt-filters-collapsed'));
+  assert.equal(vm.runInContext('receiptAnalytics.category', context), 'Food');
+  assert.equal(vm.runInContext('receiptAnalytics.itemSearch', context), 'milk');
+  vm.runInContext("activateReceiptTab('insights')", context);
+  assert.equal(elements.get('receipt-year-filter').hidden, false);
+
   elements.get('receipt-top-next').listeners.click();
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
   assert.match(elements.get('receipt-top-items').innerHTML, /Milk 11/);

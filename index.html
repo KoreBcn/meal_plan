@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
     <link rel="apple-touch-icon" href="assets/app-icon-180.png" />
     <link rel="manifest" href="manifest.webmanifest?v=2" />
-    <link rel="stylesheet" href="style.css?v=26" />
+    <link rel="stylesheet" href="style.css?v=29" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -52,8 +52,8 @@
           <button class="nav-btn" data-section="ingredients">Ingredients</button>
           <button class="nav-btn" data-section="dishes">Dishes</button>
           <button class="nav-btn" data-section="planner">Weekly Planner</button>
-          <button class="nav-btn active" data-section="shopping">Shopping List</button>
-          <button class="nav-btn" data-section="analytics">Analytics</button>
+          <button class="nav-btn" data-section="shopping">Shopping List</button>
+          <button class="nav-btn active" data-section="analytics">Analytics</button>
         </nav>
         <div class="sidebar-account">
           <p id="signed-in-user" class="signed-in-user"></p>
@@ -252,7 +252,7 @@
           </section>
         </section>
 
-        <section id="analytics" class="panel" aria-label="Shopping analytics">
+        <section id="analytics" class="panel active" aria-label="Shopping analytics">
           <h2 class="mobile-panel-title">Shopping analytics</h2>
           <div class="receipt-tab-bar">
             <div class="receipt-tabs" role="tablist" aria-label="Receipt analytics views">
@@ -260,8 +260,9 @@
               <button type="button" id="receipt-tab-insights" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-insights" data-receipt-tab="insights" tabindex="-1">Insights</button>
               <button type="button" id="receipt-tab-all-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-all-items" data-receipt-tab="all-items" tabindex="-1">Mappings</button>
             </div>
+            <button type="button" id="receipt-filters-toggle" class="secondary receipt-filters-toggle" aria-controls="receipt-analytics-toolbar" aria-expanded="false" aria-label="Show filters" title="Show filters"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="receipt-filters-slash" d="M4 4l16 16"/></svg></button>
           </div>
-          <div id="receipt-analytics-toolbar" class="receipt-analytics-toolbar">
+          <div id="receipt-analytics-toolbar" class="receipt-analytics-toolbar receipt-filters-collapsed">
             <select id="receipt-year-filter" aria-label="Filter by year" data-searchable="false" disabled>
               <option value="">Select year</option>
             </select>
@@ -361,7 +362,7 @@
           </dialog>
         </section>
 
-        <section id="shopping" class="panel active" aria-label="Shopping List">
+        <section id="shopping" class="panel" aria-label="Shopping List">
           <div class="section-header">
             <h2 class="mobile-panel-title">Shopping List</h2>
             <div id="shopping-summary" class="shopping-summary"></div>
@@ -374,6 +375,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
     <script src="js/script.js?v=3"></script>
-    <script src="js/receipt-analytics.js?v=25"></script>
+    <script src="js/receipt-analytics.js?v=26"></script>
   </body>
 </html>

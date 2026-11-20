@@ -1,5 +1,6 @@
 const receiptStatus = document.getElementById('receipt-status');
 const receiptAnalyticsToolbar = document.getElementById('receipt-analytics-toolbar');
+const receiptFiltersToggle = document.getElementById('receipt-filters-toggle');
 const receiptYearFilter = document.getElementById('receipt-year-filter');
 const receiptCategoryFilter = document.getElementById('receipt-category-filter');
 const receiptSupermarketFilter = document.getElementById('receipt-supermarket-filter');
@@ -88,6 +89,15 @@ function initReceiptAnalytics() {
   new ResizeObserver(() => {
     document.documentElement.style.setProperty('--receipt-nav-top', `${sidebar.offsetHeight}px`);
   }).observe(sidebar);
+  let filtersVisible = false;
+  receiptFiltersToggle.addEventListener('click', () => {
+    filtersVisible = !filtersVisible;
+    receiptAnalyticsToolbar.classList.toggle('receipt-filters-collapsed', !filtersVisible);
+    receiptFiltersToggle.setAttribute('aria-expanded', String(filtersVisible));
+    const label = filtersVisible ? 'Hide filters' : 'Show filters';
+    receiptFiltersToggle.setAttribute('aria-label', label);
+    receiptFiltersToggle.title = label;
+  });
   receiptYearFilter.addEventListener('change', () => {
     receiptAnalytics.year = receiptYearFilter.value;
     receiptAnalytics.selectedDate = null;
