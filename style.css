@@ -2129,19 +2129,6 @@ tbody tr:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.weekly-meals-card .day-controls {
-  margin-bottom: 16px;
-}
-
-.weekly-meals-card .meal-picker-trigger {
-  justify-content: space-between;
-}
-
-.weekly-meals-card .meal-picker-trigger::before {
-  content: "Add a meal";
-  font-weight: 600;
-}
-
 .planned-meal-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
@@ -2251,16 +2238,6 @@ tbody tr:hover {
   margin-left: 0;
 }
 
-@media (max-width: 640px) {
-  .weekly-meals-card .meal-picker-menu {
-    width: min(280px, calc(100vw - 64px));
-  }
-
-  .weekly-meals-card .meal-picker-options {
-    max-height: 140px;
-  }
-}
-
 @media (max-width: 600px) {
   .weekly-plan-heading,
   .manual-shopping-heading {
@@ -2283,90 +2260,28 @@ tbody tr:hover {
   align-items: stretch;
 }
 
-.meal-picker {
+.meal-picker-input {
   position: relative;
-  flex: 1 1 0;
-  min-width: 0;
 }
 
-.meal-picker-trigger {
-  display: flex;
+.meal-picker-input input {
   width: 100%;
-  min-width: 0;
-  height: 36px;
-  min-height: 36px;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--panel);
-  color: var(--muted);
+  padding-left: 38px;
 }
 
-.meal-picker-trigger:hover,
-.meal-picker-trigger[aria-expanded="true"] {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.meal-picker-trigger svg {
+.meal-picker-input svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
   width: 17px;
   height: 17px;
+  transform: translateY(-50%);
+  color: var(--muted);
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-width: 1.8;
-}
-
-.meal-picker-menu {
-  position: absolute;
-  z-index: 5;
-  top: calc(100% + 6px);
-  left: 0;
-  display: grid;
-  width: min(280px, calc(100vw - 64px));
-  gap: 7px;
-  padding: 9px;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
-}
-
-.meal-picker-menu[hidden] {
-  display: none;
-}
-
-.meal-picker-search {
-  min-height: 38px;
-  padding: 7px 10px;
-}
-
-.meal-picker-options {
-  display: grid;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.meal-picker-option {
-  padding: 8px 9px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-}
-
-.meal-picker-option:hover,
-.meal-picker-option:focus-visible {
-  background: var(--panel-alt);
-}
-
-.meal-picker-empty {
-  padding: 8px 9px;
-  color: var(--muted);
-  font-size: 0.84rem;
+  pointer-events: none;
 }
 
 .day-plan .day-controls .planner-icon-action {
@@ -2624,12 +2539,6 @@ body[data-theme="dark"] select {
   background: #17231c;
   color: var(--text);
   color-scheme: dark;
-}
-
-body[data-theme="dark"] .meal-picker-trigger {
-  border-color: var(--border);
-  background: #17231c;
-  color: var(--muted);
 }
 
 body[data-theme="dark"] thead,
@@ -2929,27 +2838,48 @@ body[data-theme="dark"] .weekly-chart-count {
   flex: 1 1 auto;
 }
 
-.receipt-review-filter {
-  grid-column: 1 / -1;
+.receipt-item-filter {
   display: flex;
-  flex-direction: row;
+  min-width: 0;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+}
+
+.receipt-item-filter input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.receipt-review-filter {
+  display: grid;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 9px;
 }
 
 .receipt-review-filter[hidden] {
   display: none;
 }
 
-.receipt-analytics-toolbar .receipt-review-filter input {
-  width: 18px;
-  min-width: 18px;
-  height: 18px;
-  min-height: 18px;
-  margin: 0;
-  padding: 0;
-  accent-color: var(--primary);
+.receipt-review-filter[aria-pressed="true"] {
+  background: var(--primary);
+  color: white;
+}
+
+.receipt-review-filter svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.receipt-review-filter[aria-pressed="true"] .receipt-review-slash {
+  display: none;
 }
 
 .receipt-category-recommendation {

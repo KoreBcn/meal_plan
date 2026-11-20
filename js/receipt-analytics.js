@@ -29,7 +29,6 @@ const receiptPageNext = document.getElementById('receipt-page-next');
 const receiptPageLabel = document.getElementById('receipt-page-label');
 const receiptCategorySuggestions = document.getElementById('receipt-category-suggestions');
 const receiptReviewOnly = document.getElementById('receipt-review-only');
-const receiptReviewFilter = document.getElementById('receipt-review-filter');
 const receiptUncategorizedAlert = document.getElementById('receipt-uncategorized-alert');
 const receiptPriceTrendDialog = document.getElementById('receipt-price-trend-dialog');
 const receiptPriceTrendTitle = document.getElementById('receipt-price-trend-title');
@@ -190,8 +189,12 @@ function initReceiptAnalytics() {
     receiptAnalytics.mappingPage += 1;
     renderAllReceiptItems();
   });
-  receiptReviewOnly.addEventListener('change', () => {
-    receiptAnalytics.reviewOnly = receiptReviewOnly.checked;
+  receiptReviewOnly.addEventListener('click', () => {
+    receiptAnalytics.reviewOnly = !receiptAnalytics.reviewOnly;
+    receiptReviewOnly.setAttribute('aria-pressed', String(receiptAnalytics.reviewOnly));
+    receiptReviewOnly.title = receiptAnalytics.reviewOnly
+      ? 'Show all items'
+      : 'Show only items needing a category';
     receiptAnalytics.mappingPage = 0;
     renderAllReceiptItems();
   });
@@ -387,7 +390,7 @@ async function loadAllReceiptRows(queryFactory) {
 }
 
 function activateReceiptTab(name) {
-  receiptReviewFilter.hidden = name !== 'all-items';
+  receiptReviewOnly.hidden = name !== 'all-items';
   receiptTabs.forEach((tab) => {
     const active = tab.dataset.receiptTab === name;
     tab.classList.toggle('active', active);
@@ -797,7 +800,7 @@ function renderAllReceiptItems() {
   receiptAnalytics.mappingPage = Math.max(0, Math.min(receiptAnalytics.mappingPage, pageCount - 1));
   receiptPagePrev.disabled = receiptAnalytics.mappingPage === 0;
   receiptPageNext.disabled = receiptAnalytics.mappingPage === pageCount - 1;
-  receiptPageLabel.textContent = `Page ${receiptAnalytics.mappingPage + 1} of ${pageCount} (${items.length} items)`;
+  receiptPageLabel.textContent = `Page ${receiptAnalytics.mappingPage + 1} of ${pageCount}`;
   receiptAllItems.innerHTML = items.length
     ? items.slice(receiptAnalytics.mappingPage * pageSize, (receiptAnalytics.mappingPage + 1) * pageSize).map((item) => {
       const aggregate = aggregates.get(item.id);

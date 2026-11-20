@@ -838,7 +838,7 @@ function updateCollectionPagination(name, count, previous, next, label) {
   collectionPages[name] = Math.max(0, Math.min(collectionPages[name], pages - 1));
   previous.disabled = collectionPages[name] === 0;
   next.disabled = collectionPages[name] === pages - 1;
-  label.textContent = `Page ${collectionPages[name] + 1} of ${pages} (${count} items)`;
+  label.textContent = `Page ${collectionPages[name] + 1} of ${pages}`;
   return collectionPages[name] * collectionPageSize;
 }
 
@@ -1094,19 +1094,19 @@ function renderPlanner() {
   const nextAvailableDay = dayNames.find((day) => !(state.plan[day] || []).length);
   const planWrapper = document.createElement('div');
   planWrapper.className = 'day-plan weekly-meals-card';
+  const dayControls = document.createElement('div');
+  dayControls.className = 'day-controls';
   const dishOptions = state.dishes
     .map((dish) => `<option value="${escapeHtml(dish.id)}">${escapeHtml(dish.name)}</option>`)
     .join('');
 
+  dayControls.innerHTML = nextAvailableDay ? `
+    <select data-day-select="${nextAvailableDay}" aria-label="Add a meal">
+      <option value=""></option>
+      ${dishOptions}
+    </select>
+  ` : '<p class="planner-meal-limit">All seven meal slots are filled.</p>';
   planWrapper.innerHTML = `
-    <div class="day-controls">
-      ${nextAvailableDay ? `
-        <select data-day-select="${nextAvailableDay}" aria-label="Add a meal">
-          <option value=""></option>
-          ${dishOptions}
-        </select>
-      ` : '<p class="planner-meal-limit">All seven meal slots are filled.</p>'}
-    </div>
     <div class="planned-meal-list">
       ${plannedMeals.length ? plannedMeals.map(({ day, dishId }) => {
         const dish = state.dishes.find((item) => item.id === dishId);
@@ -1142,9 +1142,9 @@ function renderPlanner() {
       }).join('') : '<p class="planner-empty">No meals planned yet. Add a meal or randomize the week.</p>'}
     </div>
   `;
-  plannerGrid.appendChild(planWrapper);
+  plannerGrid.append(dayControls, planWrapper);
   if (nextAvailableDay) {
-    enhancePlannerMealPicker(planWrapper);
+    enhancePlannerMealPicker(dayControls);
   }
 
   renderManualShoppingPicker();
@@ -1210,76 +1210,56 @@ function isIngredientExcluded(day, dishId, ingredientId) {
   );
 }
 
-function enhancePlannerMealPicker(planWrapper) {
-  const select = planWrapper.querySelector('[data-day-select]');
+function enhancePlannerMealPicker(dayControls) {
+  const select = dayControls.querySelector('[data-day-select]');
   const picker = document.createElement('div');
-  picker.className = 'meal-picker';
-
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.className = 'meal-picker-trigger';
-  trigger.setAttribute('aria-label', 'Search and add a meal');
-  trigger.setAttribute('aria-haspopup', 'listbox');
-  trigger.setAttribute('aria-expanded', 'false');
-  trigger.innerHTML = `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="10.8" cy="10.8" r="6.3"></circle>
-      <path d="m15.5 15.5 4.2 4.2"></path>
-    </svg>
+  picker.className = 'manual-shopping-search meal-picker';
+  picker.innerHTML = `
+    <div class="meal-picker-input">
+      <input type="search" placeholder="Search meals" aria-label="Search and add a meal" aria-controls="meal-picker-results" autocomplete="off" />
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="10.8" cy="10.8" r="6.3"></circle>
+        <path d="m15.5 15.5 4.2 4.2"></path>
+      </svg>
+    </div>
+    <div id="meal-picker-results" class="manual-shopping-search-results is-empty" role="group" aria-label="Meal search results" aria-live="polite" hidden></div>
   `;
-
-  const menu = document.createElement('div');
-  menu.className = 'meal-picker-menu';
-  menu.hidden = true;
-  const searchInput = document.createElement('input');
-  searchInput.type = 'search';
-  searchInput.className = 'meal-picker-search';
-  searchInput.placeholder = 'Search meals';
-  searchInput.setAttribute('aria-label', 'Search meals');
-  searchInput.autocomplete = 'off';
-  const options = document.createElement('div');
-  options.className = 'meal-picker-options';
-  options.setAttribute('role', 'listbox');
-  menu.append(searchInput, options);
-  picker.append(trigger, menu, select);
+  const searchInput = picker.querySelector('input');
+  const options = picker.querySelector('#meal-picker-results');
+  picker.appendChild(select);
   select.classList.add('visually-hidden');
-  planWrapper.querySelector('.day-controls').append(picker);
+  select.tabIndex = -1;
+  select.setAttribute('aria-hidden', 'true');
+  dayControls.appendChild(picker);
 
   const renderOptions = () => {
     const query = searchInput.value.trim().toLocaleLowerCase();
+    if (!query) {
+      options.hidden = true;
+      options.innerHTML = '';
+      options.classList.add('is-empty');
+      return;
+    }
     const matchingOptions = [...select.options].filter((option) =>
       option.value && option.textContent.toLocaleLowerCase().includes(query)
     );
+    options.hidden = false;
+    options.classList.toggle('is-empty', !matchingOptions.length);
     options.innerHTML = matchingOptions.length
       ? matchingOptions.map((option) => `
-        <button type="button" class="meal-picker-option" role="option" aria-selected="false" data-meal-id="${escapeHtml(option.value)}">
+        <button type="button" class="manual-shopping-search-result" data-meal-id="${escapeHtml(option.value)}">
           ${escapeHtml(option.textContent)}
         </button>
       `).join('')
-      : `<span class="meal-picker-empty">${select.options.length > 1 ? 'No matching meals.' : 'No meals available.'}</span>`;
+      : `<span class="manual-shopping-search-empty">${select.options.length > 1 ? 'No matching meals.' : 'No meals available.'}</span>`;
   };
-
-  const closeMenu = () => {
-    menu.hidden = true;
-    trigger.setAttribute('aria-expanded', 'false');
-  };
-
-  trigger.addEventListener('click', () => {
-    const shouldOpen = menu.hidden;
-    menu.hidden = !shouldOpen;
-    trigger.setAttribute('aria-expanded', String(shouldOpen));
-    if (shouldOpen) {
-      searchInput.value = '';
-      renderOptions();
-      searchInput.focus();
-    }
-  });
 
   searchInput.addEventListener('input', renderOptions);
   searchInput.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      closeMenu();
-      trigger.focus();
+      event.preventDefault();
+      searchInput.value = '';
+      renderOptions();
     }
   });
 
@@ -1289,7 +1269,8 @@ function enhancePlannerMealPicker(planWrapper) {
       return;
     }
     select.value = optionButton.dataset.mealId;
-    closeMenu();
+    searchInput.value = '';
+    renderOptions();
     select.dispatchEvent(new Event('change', { bubbles: true }));
   });
 }

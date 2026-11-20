@@ -131,6 +131,7 @@ test('insights ignores spending selections but respects filter pane and paginati
         if (!elements.has(id)) elements.set(id, {
           listeners: {},
           classList: { toggle() {} },
+          setAttribute(name, value) { this[name] = value; },
           addEventListener(type, handler) { this.listeners[type] = handler; },
           querySelectorAll: () => []
         });
@@ -168,17 +169,18 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.match(elements.get('receipt-category-summary').innerHTML, /Bakery/);
   assert.match(elements.get('receipt-supermarket-summary').innerHTML, /Other/);
   vm.runInContext("activateReceiptTab('all-items')", context);
-  assert.equal(elements.get('receipt-review-filter').hidden, false);
-  elements.get('receipt-review-only').checked = true;
-  elements.get('receipt-review-only').listeners.change();
+  assert.equal(elements.get('receipt-review-only').hidden, false);
+  elements.get('receipt-review-only').listeners.click();
+  assert.equal(elements.get('receipt-review-only')['aria-pressed'], 'true');
+  assert.equal(elements.get('receipt-review-only').title, 'Show all items');
   vm.runInContext("activateReceiptTab('insights')", context);
-  assert.equal(elements.get('receipt-review-filter').hidden, true);
+  assert.equal(elements.get('receipt-review-only').hidden, true);
   assert.equal(vm.runInContext('receiptAnalytics.reviewOnly', context), true);
   vm.runInContext("activateReceiptTab('all-items')", context);
-  assert.equal(elements.get('receipt-review-filter').hidden, false);
-  assert.equal(elements.get('receipt-review-only').checked, true);
-  elements.get('receipt-review-only').checked = false;
-  elements.get('receipt-review-only').listeners.change();
+  assert.equal(elements.get('receipt-review-only').hidden, false);
+  assert.equal(elements.get('receipt-review-only')['aria-pressed'], 'true');
+  elements.get('receipt-review-only').listeners.click();
+  assert.equal(elements.get('receipt-review-only')['aria-pressed'], 'false');
   const categoryButton = elements.get('receipt-show-categories');
   const supermarketButton = elements.get('receipt-show-supermarkets');
   for (const button of [categoryButton, supermarketButton]) {
@@ -564,11 +566,11 @@ test('KPIs follow the selected month and day while averages follow the filtered 
   assert.ok(elements.get('receipt-kpis').innerHTML.includes('Jan 2024'));
   vm.runInContext("receiptAnalytics.supermarket = ''; renderAllReceiptItems()", context);
   assert.equal((elements.get('receipt-all-items').innerHTML.match(/<tr>/g) || []).length, 20);
-  assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 3 (41 items)');
+  assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 3');
   vm.runInContext('receiptAnalytics.mappingPage = 2; renderAllReceiptItems()', context);
   assert.equal((elements.get('receipt-all-items').innerHTML.match(/<tr>/g) || []).length, 1);
   vm.runInContext("receiptAnalytics.supermarket = 'Netto'; renderAllReceiptItems()", context);
-  assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 1 (1 items)');
+  assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 1');
   assert.match(elements.get('receipt-all-items').innerHTML, /Item 0/);
 });
 
@@ -681,5 +683,58 @@ test('ingredient and dish pages retain ordering without displaying historical ra
   assert.match(dishes.rows[0].innerHTML, /class="collection-action-cell"/);
   assert.match(ingredients.rows[0].innerHTML, /class="collection-action-cell"/);
   vm.runInContext("ingredientSearchInput.value = 'Ingredient 20'; renderIngredients()", context);
-  assert.equal(context.ingredientPageLabel.textContent, 'Page 1 of 1 (1 items)');
+  assert.equal(context.ingredientPageLabel.textContent, 'Page 1 of 1');
+});
+
+test('planner meal search filters and selects meals', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'script.js'), 'utf8');
+  const pickerFunction = source.match(/function enhancePlannerMealPicker\([^)]*\) \{[\s\S]*?\n\}/)[0];
+  const input = {
+    value: '',
+    listeners: {},
+    addEventListener(type, handler) { this.listeners[type] = handler; }
+  };
+  const results = {
+    hidden: true,
+    innerHTML: '',
+    listeners: {},
+    classList: { add() {}, toggle() {} },
+    addEventListener(type, handler) { this.listeners[type] = handler; }
+  };
+  const select = {
+    options: [
+      { value: '', textContent: '' },
+      { value: 'pasta', textContent: 'Tomato pasta' },
+      { value: 'soup', textContent: 'Lentil soup' }
+    ],
+    classList: { add() {} },
+    setAttribute() {},
+    dispatchEvent(event) { this.event = event.type; }
+  };
+  const picker = {
+    querySelector(selector) { return selector === 'input' ? input : results; },
+    appendChild() {}
+  };
+  const controls = { querySelector: () => select, appendChild() {} };
+  const context = vm.createContext({
+    document: { createElement: () => picker },
+    Event: class { constructor(type) { this.type = type; } },
+    escapeHtml: String
+  });
+  vm.runInContext(`${pickerFunction}; enhancePlannerMealPicker`, context)(controls);
+  input.value = 'PASTA';
+  input.listeners.input();
+  assert.equal(results.hidden, false);
+  assert.match(results.innerHTML, /Tomato pasta/);
+  assert.doesNotMatch(results.innerHTML, /Lentil soup/);
+  results.listeners.click({ target: { closest: () => ({ dataset: { mealId: 'pasta' } }) } });
+  assert.equal(select.value, 'pasta');
+  assert.equal(select.event, 'change');
+  assert.equal(input.value, '');
+  assert.equal(results.hidden, true);
+  input.value = 'missing';
+  input.listeners.input();
+  assert.match(results.innerHTML, /No matching meals/);
+  input.listeners.keydown({ key: 'Escape', preventDefault() {} });
+  assert.equal(results.hidden, true);
 });

@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
     <link rel="apple-touch-icon" href="assets/app-icon-180.png" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="stylesheet" href="style.css?v=19" />
+    <link rel="stylesheet" href="style.css?v=20" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -127,9 +127,9 @@
             </table>
           </div>
           <div class="receipt-pagination" aria-label="Ingredient pages">
-            <button type="button" id="ingredient-page-prev" class="secondary">Previous</button>
+            <button type="button" id="ingredient-page-prev" class="secondary receipt-page-arrow" aria-label="Previous ingredient page" title="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
             <span id="ingredient-page-label" aria-live="polite"></span>
-            <button type="button" id="ingredient-page-next" class="secondary">Next</button>
+            <button type="button" id="ingredient-page-next" class="secondary receipt-page-arrow" aria-label="Next ingredient page" title="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
           </div>
         </section>
 
@@ -221,9 +221,9 @@
             </table>
           </div>
           <div class="receipt-pagination" aria-label="Dish pages">
-            <button type="button" id="dish-page-prev" class="secondary">Previous</button>
+            <button type="button" id="dish-page-prev" class="secondary receipt-page-arrow" aria-label="Previous dish page" title="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
             <span id="dish-page-label" aria-live="polite"></span>
-            <button type="button" id="dish-page-next" class="secondary">Next</button>
+            <button type="button" id="dish-page-next" class="secondary receipt-page-arrow" aria-label="Next dish page" title="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
           </div>
         </section>
 
@@ -271,8 +271,10 @@
             <select id="receipt-supermarket-filter" aria-label="Filter by supermarket" data-searchable="false" disabled>
               <option value="">All supermarkets</option>
             </select>
-            <input id="receipt-item-search" type="search" aria-label="Filter by item" placeholder="Filter by item" disabled />
-            <label id="receipt-review-filter" class="receipt-review-filter" hidden><input type="checkbox" id="receipt-review-only" /> Show only items needing a category</label>
+            <div class="receipt-item-filter">
+              <input id="receipt-item-search" type="search" aria-label="Filter by item" placeholder="Filter by item" disabled />
+              <button type="button" id="receipt-review-only" class="secondary receipt-review-filter" aria-label="Show only items needing a category" title="Show only items needing a category" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="receipt-review-slash" d="M4 4l16 16"/></svg></button>
+            </div>
           </div>
           <p id="receipt-uncategorized-alert" class="receipt-uncategorized-alert" role="status" hidden></p>
           <p id="receipt-status" class="status-message" role="status" aria-live="polite"></p>
@@ -345,9 +347,9 @@
                 </table>
               </div>
               <div class="receipt-pagination">
-                <button type="button" id="receipt-page-prev" class="secondary">Previous</button>
+                <button type="button" id="receipt-page-prev" class="secondary receipt-page-arrow" aria-label="Previous mappings page" title="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
                 <span id="receipt-page-label" aria-live="polite"></span>
-                <button type="button" id="receipt-page-next" class="secondary">Next</button>
+                <button type="button" id="receipt-page-next" class="secondary receipt-page-arrow" aria-label="Next mappings page" title="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
               </div>
             </section>
           </section>
@@ -377,7 +379,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
-    <script src="js/script.js?v=1"></script>
-    <script src="js/receipt-analytics.js?v=20"></script>
+    <script src="js/script.js?v=2"></script>
+    <script src="js/receipt-analytics.js?v=21"></script>
   </body>
 </html>

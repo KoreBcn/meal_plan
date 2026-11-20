@@ -67,11 +67,14 @@ To test a clean history import after installing the receipt schema and seeding t
 
 The [receipt import workflow](./.github/workflows/receipt-import.yml) runs the regular receipt parser daily at 00:00 UTC and can also be started manually from the repository's **Actions** tab. GitHub scheduled workflows use UTC; the run time does not automatically adjust for daylight saving time. The import is idempotent, so repeated runs do not create duplicate receipt facts.
 
+After importing, the workflow sends uncategorized product names to Cloudflare Workers AI (Llama 3.3 70B) for automatic categorization. Full emails, receipt dates and prices are not sent to the model. Only results the model reports as high-confidence are saved; uncertain items remain available for manual review in Mappings. Existing categories and concurrent manual edits are preserved. AI predictions can still be wrong and can be edited in Mappings. Cloudflare's free plan has a daily usage allowance; exceeding it fails the categorization step without undoing the receipt import. Existing duplicate receipt facts are not removed.
+
 Add these repository **Actions secrets** under **Settings → Secrets and variables → Actions**:
 
 - `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET`: the OAuth client ID and secret from the Google Cloud Desktop app credentials.
 - `GMAIL_REFRESH_TOKEN`: the `refresh_token` from the local `token.json` created after signing into the Gmail account with `python scripts/gmail_api.py`. The token must have the Gmail read-only scope. Keep the token file private.
 - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`: the project URL and publishable key used in the local Supabase config.
 - `SUPABASE_EMAIL` and `SUPABASE_PASSWORD`: the confirmed Supabase household account used to sign in. Its existing RLS membership must allow receipt imports.
+- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`: from **Workers AI → Use REST API** in the [Cloudflare dashboard](https://dash.cloudflare.com/). Create the Workers AI API token using the provided template, then add both values as GitHub Actions secrets. Do not commit or share the token.
 
 The workflow refreshes Gmail access with the OAuth client credentials at runtime and uses the Supabase account's authenticated session, so no service-role key is needed. The workflow never writes OAuth credentials to the repository.
