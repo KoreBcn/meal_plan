@@ -163,10 +163,14 @@ button {
   border-radius: 50%;
 }
 
-.add-item-button span {
+.add-item-button svg {
   display: block;
-  font-size: 1.6rem;
-  line-height: 1;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 
 .card-form {
@@ -899,16 +903,16 @@ tbody tr:hover {
 }
 
 .summary-card.shopping-clear-checks {
-  justify-content: center;
-  border-color: var(--primary);
-  background: var(--panel-alt);
-  color: var(--primary-dark);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
   font-size: 0.72rem;
   font-weight: 600;
 }
 
 .summary-card.shopping-clear-checks:hover:not(:disabled) {
-  background: var(--panel);
+  background: var(--panel-alt);
+  color: var(--primary-dark);
 }
 
 .summary-card.shopping-clear-checks:focus-visible {
@@ -1090,14 +1094,10 @@ body {
 }
 
 .brand-mark {
-  display: grid;
+  display: block;
   width: 36px;
   height: 36px;
-  place-items: center;
   border-radius: 12px;
-  background: #c6df9e;
-  color: #193c32;
-  font-size: 1rem;
 }
 
 .menu-toggle {
@@ -1819,6 +1819,7 @@ tbody tr:hover {
 .collection-toolbar .add-item-button {
   flex: 0 0 42px;
   margin-left: auto;
+  padding: 0;
 }
 
 .collection-toolbar label {
@@ -1862,61 +1863,20 @@ tbody tr:hover {
   line-height: 1;
 }
 
-.dish-name-cell {
-  display: flex;
-  width: 100%;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+.collection-action-cell {
+  width: 1%;
 }
 
-.dish-title-group {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
+.collection-action-cell .table-actions {
+  justify-content: flex-end;
 }
 
-.dish-title-group > strong,
-.ingredient-name-cell > strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.ingredient-name-cell {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.dish-name-cell .table-actions .icon-action,
-.ingredient-name-cell .table-actions .icon-action {
+.collection-action-cell .icon-action {
   width: 30px;
   min-width: 30px;
   height: 30px;
   min-height: 30px;
   border-radius: 8px;
-}
-
-.dish-rank {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #f1f5e9;
-  color: var(--primary-dark);
-  font-size: 0.7rem;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-.dish-rank > span {
-  color: var(--muted);
-  font-size: 0.65rem;
-  font-weight: 550;
 }
 
 .weekly-chart-card {
@@ -2071,17 +2031,21 @@ tbody tr:hover {
 
   .collection-filters {
     flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .collection-toolbar select {
+  .collection-filters label:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .collection-toolbar select,
+  .collection-toolbar input[type="search"] {
     width: 100%;
     min-width: 0;
-  }
-
-  .collection-toolbar input[type="search"] {
-    width: auto;
-    min-width: 0;
-    flex: 1;
+    min-height: 42px;
+    padding: 8px;
+    font-size: 0.8rem;
   }
 
   .weekly-chart-card {
@@ -2554,6 +2518,30 @@ body[data-theme="dark"] .manual-shopping-items .planner-icon-action.danger {
     padding-top: 15px;
   }
 
+  #dish-table tbody tr,
+  #ingredient-table tbody tr {
+    position: relative;
+  }
+
+  #dish-table tbody td[data-label="Dish"],
+  #ingredient-table tbody td[data-label="Ingredient"] {
+    padding-right: 95px;
+  }
+
+  #dish-table tbody td.collection-action-cell,
+  #ingredient-table tbody td.collection-action-cell {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    border: 0;
+  }
+
+  #dish-table tbody td.collection-action-cell::before,
+  #ingredient-table tbody td.collection-action-cell::before {
+    content: none;
+  }
+
   #dish-table .category-badge,
   #ingredient-table .category-badge {
     max-width: 100%;
@@ -2942,15 +2930,19 @@ body[data-theme="dark"] .weekly-chart-count {
 }
 
 .receipt-review-filter {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
   font-size: 0.85rem;
 }
 
-.receipt-review-filter input {
+.receipt-review-filter[hidden] {
+  display: none;
+}
+
+.receipt-analytics-toolbar .receipt-review-filter input {
   width: 18px;
   min-width: 18px;
   height: 18px;
@@ -3030,7 +3022,40 @@ body[data-theme="dark"] .weekly-chart-count {
 }
 
 .receipt-price-trend-dialog .receipt-card-heading {
-  align-items: center;
+  align-items: flex-start;
+  flex-direction: row;
+}
+
+.receipt-price-trend-dialog .receipt-card-heading > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.receipt-price-trend-close {
+  display: grid;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.receipt-price-trend-close:hover {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.receipt-price-trend-close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
 }
 
 .receipt-price-trend-chart {
@@ -3126,8 +3151,7 @@ body[data-theme="dark"] .meal-ranking-row {
   border-bottom-color: #2d3b32;
 }
 
-body[data-theme="dark"] .category-badge,
-body[data-theme="dark"] .dish-rank {
+body[data-theme="dark"] .category-badge {
   border-color: #3b5042;
   background: #26382c;
   color: #d0e7d5;
@@ -3235,6 +3259,90 @@ body[data-theme="dark"] .shopping-item-check input:checked {
   align-items: start;
 }
 
+.receipt-top-card .receipt-card-heading {
+  min-height: 32px;
+  align-items: center;
+  flex-direction: row;
+}
+
+.receipt-top-table-wrap {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.receipt-top-table,
+.receipt-top-table tbody {
+  display: block;
+  width: 100%;
+}
+
+.receipt-top-table-wrap thead {
+  display: block;
+}
+
+#receipt-panel-insights .receipt-top-table tbody {
+  display: grid;
+  gap: 6px;
+}
+
+#receipt-panel-insights .receipt-top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background-color: var(--panel-alt);
+  background-image: linear-gradient(to right, rgba(105, 189, 134, 0.24) var(--receipt-item-bar), transparent var(--receipt-item-bar));
+  box-shadow: none;
+}
+
+#receipt-panel-insights .receipt-top-card .receipt-top-table td {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  overflow-wrap: anywhere;
+}
+
+#receipt-panel-insights .receipt-top-table td::before {
+  content: none;
+}
+
+.receipt-breakdown-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.receipt-breakdown-button,
+.receipt-page-arrow {
+  display: grid;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  place-items: center;
+  padding: 6px;
+}
+
+.receipt-breakdown-button[aria-pressed="true"] {
+  background: var(--primary);
+  color: white;
+}
+
+.receipt-breakdown-button svg,
+.receipt-page-arrow svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 #receipt-panel-insights .receipt-card td,
 #receipt-panel-insights .receipt-card th {
   padding: 8px 6px;
@@ -3310,6 +3418,10 @@ body[data-theme="dark"] .shopping-item-check input:checked {
   .receipt-insights-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .receipt-breakdown-card {
+    order: -1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3320,7 +3432,19 @@ body[data-theme="dark"] .shopping-item-check input:checked {
   }
 
   .receipt-analytics-toolbar {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receipt-analytics-toolbar select,
+  .receipt-analytics-toolbar input {
+    min-width: 0;
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+
+  #receipt-panel-insights .receipt-breakdown-card .receipt-card-heading {
+    align-items: center;
+    flex-direction: row;
   }
 
   .receipt-kpis {
@@ -3398,11 +3522,15 @@ body[data-theme="dark"] .shopping-item-check input:checked {
 }
 
 .receipt-calendar-shopping {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: white;
+  border-color: transparent;
   font-weight: 700;
 }
+
+.receipt-calendar-heat-1 { background: #d1ebd8; color: #142f20; }
+.receipt-calendar-heat-2 { background: #a5dbb5; color: #142f20; }
+.receipt-calendar-heat-3 { background: #69bd86; color: #142f20; }
+.receipt-calendar-heat-4 { background: #327c4d; color: #fff; }
+.receipt-calendar-heat-5 { background: #14522e; color: #fff; }
 
 .receipt-calendar-shopping:hover,
 .receipt-calendar-shopping[aria-pressed="true"] {

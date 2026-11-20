@@ -21,14 +21,15 @@ const receiptTopNext = document.getElementById('receipt-top-next');
 const receiptTopLabel = document.getElementById('receipt-top-label');
 const receiptCategorySummary = document.getElementById('receipt-category-summary');
 const receiptSupermarketSummary = document.getElementById('receipt-supermarket-summary');
-const receiptInsightsToggle = document.getElementById('receipt-insights-toggle');
-const receiptInsightsTitle = document.getElementById('receipt-insights-title');
+const receiptShowCategories = document.getElementById('receipt-show-categories');
+const receiptShowSupermarkets = document.getElementById('receipt-show-supermarkets');
 const receiptAllItems = document.getElementById('receipt-all-items');
 const receiptPagePrev = document.getElementById('receipt-page-prev');
 const receiptPageNext = document.getElementById('receipt-page-next');
 const receiptPageLabel = document.getElementById('receipt-page-label');
 const receiptCategorySuggestions = document.getElementById('receipt-category-suggestions');
 const receiptReviewOnly = document.getElementById('receipt-review-only');
+const receiptReviewFilter = document.getElementById('receipt-review-filter');
 const receiptUncategorizedAlert = document.getElementById('receipt-uncategorized-alert');
 const receiptPriceTrendDialog = document.getElementById('receipt-price-trend-dialog');
 const receiptPriceTrendTitle = document.getElementById('receipt-price-trend-title');
@@ -48,6 +49,7 @@ const receiptAnalytics = {
   reviewOnly: false,
   topPage: 0,
   insightCategories: null,
+  insightSupermarkets: null,
   userId: null,
   loadedUserId: null,
   loadingUserId: null,
@@ -57,6 +59,12 @@ const receiptAnalytics = {
 const receiptMoney = new Intl.NumberFormat('da-DK', {
   style: 'currency',
   currency: 'DKK'
+});
+const receiptChartMoney = new Intl.NumberFormat('da-DK', {
+  style: 'currency',
+  currency: 'DKK',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
 });
 const receiptNumber = new Intl.NumberFormat('da-DK', {
   maximumFractionDigits: 2
@@ -100,6 +108,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.insightCategories = null;
+    receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
   });
   receiptCategoryFilter.addEventListener('change', () => {
@@ -107,6 +116,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.insightCategories = null;
+    receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
   });
   receiptSupermarketFilter.addEventListener('change', () => {
@@ -114,6 +124,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.insightCategories = null;
+    receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
   });
   receiptItemSearch.addEventListener('input', () => {
@@ -121,6 +132,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.insightCategories = null;
+    receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
   });
   receiptSummary.addEventListener('click', (event) => {
@@ -133,33 +145,42 @@ function initReceiptAnalytics() {
     receiptAnalytics.mappingPage = 0;
     renderReceiptAnalytics();
   });
-  receiptInsightsToggle.addEventListener('click', () => {
-    const showSupermarkets = receiptInsightsToggle.getAttribute('aria-pressed') !== 'true';
-    receiptInsightsToggle.setAttribute('aria-pressed', String(showSupermarkets));
-    receiptInsightsToggle.textContent = showSupermarkets ? 'Show categories' : 'Show supermarkets';
-    receiptInsightsTitle.textContent = showSupermarkets ? 'Spend by supermarket' : 'Spend by category';
+  const showReceiptBreakdown = (showSupermarkets) => {
+    receiptShowCategories.setAttribute('aria-pressed', String(!showSupermarkets));
+    receiptShowSupermarkets.setAttribute('aria-pressed', String(showSupermarkets));
     receiptCategorySummary.hidden = showSupermarkets;
     receiptSupermarketSummary.hidden = !showSupermarkets;
-    if (showSupermarkets && receiptAnalytics.insightCategories) {
+    if ((showSupermarkets && receiptAnalytics.insightCategories)
+      || (!showSupermarkets && receiptAnalytics.insightSupermarkets)) {
       receiptAnalytics.insightCategories = null;
+      receiptAnalytics.insightSupermarkets = null;
       receiptAnalytics.topPage = 0;
       const rows = filteredReceiptRows(false);
       renderTopReceiptItems(rows);
       renderReceiptCategories(rows);
+      renderReceiptSupermarkets(rows);
     }
-  });
-  receiptCategorySummary.addEventListener('click', (event) => {
-    const bar = event.target.closest('[data-bar-categories]');
-    if (!bar) return;
-    const categories = JSON.parse(bar.dataset.barCategories);
-    receiptAnalytics.insightCategories = JSON.stringify(receiptAnalytics.insightCategories) === JSON.stringify(categories)
-      ? null
-      : categories;
-    receiptAnalytics.topPage = 0;
-    receiptCategorySummary.querySelectorAll('[data-bar-categories]').forEach((item) => {
-      item.setAttribute('aria-pressed', String(item.dataset.barCategories === JSON.stringify(receiptAnalytics.insightCategories)));
+  };
+  receiptShowCategories.addEventListener('click', () => showReceiptBreakdown(false));
+  receiptShowSupermarkets.addEventListener('click', () => showReceiptBreakdown(true));
+  [
+    [receiptCategorySummary, 'categories', 'insightCategories'],
+    [receiptSupermarketSummary, 'supermarkets', 'insightSupermarkets']
+  ].forEach(([chart, kind, selection]) => {
+    chart.addEventListener('click', (event) => {
+      const bar = event.target.closest(`[data-bar-${kind}]`);
+      if (!bar) return;
+      const values = JSON.parse(bar.dataset[kind === 'categories' ? 'barCategories' : 'barSupermarkets']);
+      receiptAnalytics[selection] = JSON.stringify(receiptAnalytics[selection]) === JSON.stringify(values)
+        ? null
+        : values;
+      receiptAnalytics.topPage = 0;
+      chart.querySelectorAll(`[data-bar-${kind}]`).forEach((item) => {
+        const selected = item.dataset[kind === 'categories' ? 'barCategories' : 'barSupermarkets'];
+        item.setAttribute('aria-pressed', String(selected === JSON.stringify(receiptAnalytics[selection])));
+      });
+      renderTopReceiptItems(filteredReceiptRows(false));
     });
-    renderTopReceiptItems(filteredReceiptRows(false));
   });
   receiptPagePrev.addEventListener('click', () => {
     receiptAnalytics.mappingPage -= 1;
@@ -224,7 +245,7 @@ function initReceiptAnalytics() {
   [receiptCategorySummary, receiptSupermarketSummary].forEach((chart) => {
     const help = chart === receiptCategorySummary
       ? 'Select a category to filter Top Items; select it again to clear.'
-      : 'Hover over or focus a bar for details.';
+      : 'Select a supermarket to filter Top Items; select it again to clear.';
     ['mouseover', 'focusin'].forEach((type) => chart.addEventListener(type, (event) => {
       const bar = event.target.closest('[data-bar-detail]');
       if (bar) chart.querySelector('.receipt-bar-detail').textContent = bar.dataset.barDetail;
@@ -270,6 +291,7 @@ async function handleReceiptSession(session) {
     receiptAnalytics.rows = [];
     receiptAnalytics.items = [];
     receiptAnalytics.insightCategories = null;
+    receiptAnalytics.insightSupermarkets = null;
     receiptYearFilter.disabled = true;
     receiptCategoryFilter.disabled = true;
     receiptSupermarketFilter.disabled = true;
@@ -286,6 +308,7 @@ async function handleReceiptSession(session) {
   receiptAnalytics.userId = userId;
   receiptAnalytics.rows = [];
   receiptAnalytics.insightCategories = null;
+  receiptAnalytics.insightSupermarkets = null;
   const loadId = ++receiptAnalytics.loadId;
   receiptAnalytics.loadingUserId = userId;
   const loaded = await loadReceiptData(loadId);
@@ -364,6 +387,7 @@ async function loadAllReceiptRows(queryFactory) {
 }
 
 function activateReceiptTab(name) {
+  receiptReviewFilter.hidden = name !== 'all-items';
   receiptTabs.forEach((tab) => {
     const active = tab.dataset.receiptTab === name;
     tab.classList.toggle('active', active);
@@ -504,12 +528,12 @@ function renderReceiptKpis() {
   const selectedSavings = selectedRows.reduce((sum, row) => sum + receiptDiscount(row), 0);
   const period = receiptAnalytics.selectedDate
     ? formatReceiptDate(receiptAnalytics.selectedDate)
-    : new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    : new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric', timeZone: 'UTC' })
       .format(new Date(Date.UTC(Number(receiptAnalytics.year), Number(receiptAnalytics.month) - 1, 1)));
   const divisor = months.size || 1;
   receiptKpis.innerHTML = `
-    <div class="receipt-card receipt-kpi"><span>Spent · ${escapeReceiptHtml(period)}</span><strong>${formatReceiptMoney(selectedSpend)}</strong><small>${escapeReceiptHtml(receiptAnalytics.year)} monthly average: ${formatReceiptMoney(totalSpend / divisor)}</small></div>
-    <div class="receipt-card receipt-kpi"><span>Savings · ${escapeReceiptHtml(period)}</span><strong>${formatReceiptMoney(selectedSavings)}</strong><small>${escapeReceiptHtml(receiptAnalytics.year)} monthly average: ${formatReceiptMoney(totalSavings / divisor)}</small></div>
+    <div class="receipt-card receipt-kpi"><span>Spent · ${escapeReceiptHtml(period)}</span><strong>${receiptChartMoney.format(selectedSpend)}</strong><small>${escapeReceiptHtml(receiptAnalytics.year)} avg.: ${receiptChartMoney.format(totalSpend / divisor)}</small></div>
+    <div class="receipt-card receipt-kpi"><span>Savings · ${escapeReceiptHtml(period)}</span><strong>${receiptChartMoney.format(selectedSavings)}</strong><small>${escapeReceiptHtml(receiptAnalytics.year)} avg.: ${receiptChartMoney.format(totalSavings / divisor)}</small></div>
   `;
 }
 
@@ -535,11 +559,11 @@ function renderReceiptMonthlySummary(rows) {
     const height = month.spend
       ? Math.max(3, Math.round(month.spend / maximum * 100))
       : 0;
-    const description = `${name}: ${shoppingDates.toLocaleString()} shopping date${shoppingDates === 1 ? '' : 's'}, ${formatReceiptMoney(month.spend)} total spend`;
+    const description = `${name}: ${shoppingDates.toLocaleString()} shopping date${shoppingDates === 1 ? '' : 's'}, ${receiptChartMoney.format(month.spend)} total spend`;
     const selected = receiptAnalytics.month === String(month.month + 1).padStart(2, '0');
     return `
-      <button type="button" class="receipt-month-column" data-receipt-month="${String(month.month + 1).padStart(2, '0')}" title="${escapeReceiptHtml(description)}" aria-label="Filter by ${escapeReceiptHtml(name)}: ${shoppingDates.toLocaleString()} shopping date${shoppingDates === 1 ? '' : 's'}, ${escapeReceiptHtml(formatReceiptMoney(month.spend))} total spend" aria-pressed="${selected}">
-        <span class="receipt-month-value">${escapeReceiptHtml(formatReceiptMoney(month.spend))}</span>
+      <button type="button" class="receipt-month-column" data-receipt-month="${String(month.month + 1).padStart(2, '0')}" title="${escapeReceiptHtml(description)}" aria-label="Filter by ${escapeReceiptHtml(description)}" aria-pressed="${selected}">
+        <span class="receipt-month-value">${escapeReceiptHtml(receiptChartMoney.format(month.spend))}</span>
         <span class="receipt-month-track"><span class="receipt-month-fill" style="height:${height}%"></span></span>
         <span class="receipt-month-label">${escapeReceiptHtml(name)}</span>
       </button>
@@ -574,14 +598,16 @@ function renderReceiptCalendar(rows) {
   const headings = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     .map((day) => `<span class="receipt-calendar-weekday">${day}</span>`).join('');
   const blanks = '<span class="receipt-calendar-blank"></span>'.repeat(leadingDays);
+  const maxSpend = Math.max(0, ...[...byDate.values()].map((day) => day.spend));
   const days = Array.from({ length: daysInMonth }, (_, index) => {
     const number = index + 1;
     const date = `${receiptAnalytics.year}-${receiptAnalytics.month}-${String(number).padStart(2, '0')}`;
     const day = byDate.get(date);
     if (!day) return `<span class="receipt-calendar-day">${number}</span>`;
-    const description = `${formatReceiptDate(date)}: ${formatReceiptMoney(day.spend)} spent; ${[...day.places].join(', ')}; ${formatReceiptMoney(day.savings)} saved`;
+    const level = maxSpend > 0 ? Math.max(1, Math.ceil(day.spend / maxSpend * 5)) : 1;
+    const description = `${formatReceiptDate(date)}: ${receiptChartMoney.format(day.spend)} spent; ${[...day.places].join(', ')}; ${receiptChartMoney.format(day.savings)} saved`;
     return `
-      <button type="button" class="receipt-calendar-day receipt-calendar-shopping" data-receipt-date="${date}" data-receipt-details="${escapeReceiptHtml(description)}" title="${escapeReceiptHtml(description)}" aria-label="${escapeReceiptHtml(description)}" aria-pressed="${date === receiptAnalytics.selectedDate}">${number}</button>
+      <button type="button" class="receipt-calendar-day receipt-calendar-shopping receipt-calendar-heat-${level}" data-receipt-date="${date}" data-receipt-details="${escapeReceiptHtml(description)}" title="${escapeReceiptHtml(description)}" aria-label="${escapeReceiptHtml(description)}" aria-pressed="${date === receiptAnalytics.selectedDate}">${number}</button>
     `;
   }).join('');
   receiptCalendar.innerHTML = headings + blanks + days;
@@ -619,7 +645,7 @@ function receiptDiscount(row) {
 function renderReceiptSupermarkets(rows) {
   const supermarkets = new Map();
   rows.forEach((row) => {
-    const name = row.supermarket?.trim() || null;
+    const name = row.supermarket?.trim() || 'Unknown';
     if (!supermarkets.has(name)) {
       supermarkets.set(name, { spend: 0, discount: 0 });
     }
@@ -628,7 +654,7 @@ function renderReceiptSupermarkets(rows) {
     summary.discount += receiptDiscount(row);
   });
   receiptSupermarketSummary.innerHTML = renderReceiptBars([...supermarkets.entries()].map(([name, summary]) => ({
-    name: name || 'Unknown', spend: summary.spend, discount: summary.discount
+    name, spend: summary.spend, discount: summary.discount
   })), 'supermarket');
 }
 
@@ -640,30 +666,30 @@ function renderReceiptBars(entries, label) {
   const sorted = [...entries].sort((left, right) =>
     right.spend - left.spend || left.name.localeCompare(right.name)
   );
-  const shown = sorted.slice(0, 10).map((entry) => ({ ...entry, categories: [entry.name] }));
+  const shown = sorted.slice(0, 10).map((entry) => ({ ...entry, values: [entry.name] }));
   const remaining = sorted.slice(10);
   if (remaining.length) {
     shown.push({
       name: 'Other',
       spend: remaining.reduce((sum, entry) => sum + entry.spend, 0),
-      categories: remaining.map((entry) => entry.name),
+      values: remaining.map((entry) => entry.name),
       ...(label === 'supermarket' ? { discount: remaining.reduce((sum, entry) => sum + entry.discount, 0) } : {})
     });
   }
   const max = Math.max(...shown.map((entry) => entry.spend));
   const bars = shown.map((entry, index) => {
     const name = remaining.length && index < 10 && entry.name === 'Other' ? `Other (${label})` : entry.name;
-    const detail = `${name}: ${formatReceiptMoney(entry.spend)}${entry.discount == null ? '' : `; discounts: ${formatReceiptMoney(entry.discount)}`} (${Math.round(entry.spend / total * 100)}%)`;
-    const categoryAttributes = label === 'category'
-      ? ` data-bar-categories="${escapeReceiptHtml(JSON.stringify(entry.categories))}" aria-pressed="${JSON.stringify(receiptAnalytics.insightCategories) === JSON.stringify(entry.categories)}"`
-      : '';
-    return `<button type="button" class="receipt-bar" data-bar-detail="${escapeReceiptHtml(detail)}"${categoryAttributes} aria-label="${escapeReceiptHtml(detail)}" title="${escapeReceiptHtml(detail)}"><span class="receipt-bar-fill" style="width: ${entry.spend / max * 100}%"></span><span class="receipt-bar-label">${escapeReceiptHtml(name)}</span><span class="receipt-bar-amount">${formatReceiptMoney(entry.spend)}</span></button>`;
+    const detail = `${name}: ${receiptChartMoney.format(entry.spend)}${entry.discount == null ? '' : `; discounts: ${receiptChartMoney.format(entry.discount)}`} (${Math.round(entry.spend / total * 100)}%)`;
+    const kind = label === 'category' ? 'categories' : 'supermarkets';
+    const selection = label === 'category' ? receiptAnalytics.insightCategories : receiptAnalytics.insightSupermarkets;
+    const selectionAttributes = ` data-bar-${kind}="${escapeReceiptHtml(JSON.stringify(entry.values))}" aria-pressed="${JSON.stringify(selection) === JSON.stringify(entry.values)}"`;
+    return `<button type="button" class="receipt-bar" data-bar-detail="${escapeReceiptHtml(detail)}"${selectionAttributes} aria-label="${escapeReceiptHtml(detail)}" title="${escapeReceiptHtml(detail)}"><span class="receipt-bar-fill" style="width: ${entry.spend / max * 100}%"></span><span class="receipt-bar-label">${escapeReceiptHtml(name)}</span><span class="receipt-bar-amount">${receiptChartMoney.format(entry.spend)}</span></button>`;
   }).join('');
   return `
     <div class="receipt-bar-chart" role="group" aria-label="Spending by ${label}">
       ${bars}
     </div>
-    <p class="receipt-bar-detail" aria-live="polite">${label === 'category' ? 'Select a category to filter Top Items; select it again to clear.' : 'Hover over or focus a bar for details.'}</p>
+    <p class="receipt-bar-detail" aria-live="polite">Select a ${label} to filter Top Items; select it again to clear.</p>
   `;
 }
 
@@ -699,26 +725,28 @@ function aggregateReceiptItems(rows) {
 }
 
 function renderTopReceiptItems(rows) {
-  const matchingRows = receiptAnalytics.insightCategories
-    ? rows.filter((row) => receiptAnalytics.insightCategories.includes(normalizeCategory(row.category)))
-    : rows;
+  const matchingRows = rows.filter((row) =>
+    (!receiptAnalytics.insightCategories || receiptAnalytics.insightCategories.includes(normalizeCategory(row.category)))
+    && (!receiptAnalytics.insightSupermarkets || receiptAnalytics.insightSupermarkets.includes(row.supermarket?.trim() || 'Unknown'))
+  );
   const items = aggregateReceiptItems(matchingRows);
   const pageSize = 10;
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   receiptAnalytics.topPage = Math.max(0, Math.min(receiptAnalytics.topPage, pageCount - 1));
   receiptTopPrev.disabled = receiptAnalytics.topPage === 0;
   receiptTopNext.disabled = receiptAnalytics.topPage === pageCount - 1;
-  receiptTopLabel.textContent = `Page ${receiptAnalytics.topPage + 1} of ${pageCount} (${items.length} items)`;
+  receiptTopLabel.textContent = `Page ${receiptAnalytics.topPage + 1} of ${pageCount}`;
+  const maxSpend = items.length ? Math.max(0, items[0].spend) : 0;
   receiptTopItems.innerHTML = items.length
     ? items.slice(receiptAnalytics.topPage * pageSize, (receiptAnalytics.topPage + 1) * pageSize).map((item) => `
-      <tr>
+      <tr class="receipt-top-row" style="--receipt-item-bar: ${maxSpend > 0 ? item.spend / maxSpend * 100 : 0}%">
         <td data-label="Item">
           ${escapeReceiptHtml(item.name)}
           <small class="receipt-top-item-details">${[...item.amounts.entries()].map(([unit, amount]) => `${receiptNumber.format(amount)}${unit ? ` ${escapeReceiptHtml(unit)}` : ''}`).join(' + ')} · ${item.purchases} purchases · ${escapeReceiptHtml(item.category)}</small>
         </td>
         <td data-label="Total spend">
           <div class="receipt-top-item-spend">
-            <strong>${formatReceiptMoney(item.spend)}</strong>
+            <strong>${receiptChartMoney.format(item.spend)}</strong>
             <button type="button" class="receipt-price-trend-button" data-price-trend-item="${escapeReceiptHtml(item.itemId)}" aria-label="Show price per unit trend for ${escapeReceiptHtml(item.name)}" title="Show price per unit trend">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-7"/></svg>
             </button>
@@ -843,13 +871,13 @@ function renderPriceTrendChart(history) {
     const value = max - ratio * (max - min);
     return `
       <line class="receipt-price-trend-gridline" x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" />
-      <text class="receipt-price-trend-axis-label" x="${margin.left - 10}" y="${y + 4}" text-anchor="end">${escapeReceiptHtml(formatReceiptMoney(value))}</text>
+      <text class="receipt-price-trend-axis-label" x="${margin.left - 10}" y="${y + 4}" text-anchor="end">${escapeReceiptHtml(receiptChartMoney.format(value))}</text>
     `;
   }).join('');
   const line = points.map((point) => `${point.x},${point.y}`).join(' ');
   const markers = points.map(({ x, y, row }) => `
     <circle class="receipt-price-trend-point" cx="${x}" cy="${y}" r="4">
-      <title>${escapeReceiptHtml(formatReceiptDate(row.date))}: ${escapeReceiptHtml(formatReceiptMoney(Number(row.price_per_unit)))}</title>
+      <title>${escapeReceiptHtml(formatReceiptDate(row.date))}: ${escapeReceiptHtml(receiptChartMoney.format(Number(row.price_per_unit)))}</title>
     </circle>
   `).join('');
   const startLabel = escapeReceiptHtml(formatReceiptDate(history[0].date));
@@ -925,6 +953,7 @@ async function saveReceiptCategory(itemId, category, itemName, onlyUncategorized
       }
     });
     receiptAnalytics.insightCategories = null;
+    receiptAnalytics.insightSupermarkets = null;
     receiptAnalytics.topPage = 0;
     updateReceiptUncategorizedAlert();
     setReceiptStatus(`Saved category mapping for ${itemName}.`);

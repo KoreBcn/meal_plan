@@ -258,7 +258,6 @@ const newIngredientButton = document.getElementById('new-ingredient');
 const dishForm = document.getElementById('dish-form');
 const dishTableBody = document.getElementById('dish-table-body');
 const dishSearchInput = document.getElementById('dish-search');
-const dishSortSelect = document.getElementById('dish-sort');
 const dishPagePrev = document.getElementById('dish-page-prev');
 const dishPageNext = document.getElementById('dish-page-next');
 const dishPageLabel = document.getElementById('dish-page-label');
@@ -516,10 +515,6 @@ function bindDefaultValues() {
     renderIngredients();
   });
   dishSearchInput.addEventListener('input', () => {
-    collectionPages.dishes = 0;
-    renderDishes();
-  });
-  dishSortSelect.addEventListener('change', () => {
     collectionPages.dishes = 0;
     renderDishes();
   });
@@ -829,24 +824,24 @@ function renderIngredients() {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td data-label="Ingredient">
-        <div class="ingredient-name-cell">
-          <strong>${escapeHtml(ingredient.name)}</strong>
-          <div class="table-actions">
-            <button type="button" class="secondary icon-action" data-edit-ingredient="${ingredient.id}" aria-label="Edit ${escapeHtml(ingredient.name)}" title="Edit ${escapeHtml(ingredient.name)}">${renderActionIcon('edit')}</button>
-            <button type="button" class="danger icon-action" data-remove-ingredient="${ingredient.id}" aria-label="Remove ${escapeHtml(ingredient.name)}" title="Remove ${escapeHtml(ingredient.name)}">${renderActionIcon('remove')}</button>
-          </div>
-        </div>
+        <strong>${escapeHtml(ingredient.name)}</strong>
       </td>
       <td data-label="Category">${renderCategoryBadge(ingredient.category)}</td>
       <td data-label="Unit">${escapeHtml(ingredient.unit)}</td>
       <td data-label="Price">kr. ${Number(ingredient.price).toFixed(2)}</td>
+      <td class="collection-action-cell">
+        <div class="table-actions">
+          <button type="button" class="secondary icon-action" data-edit-ingredient="${ingredient.id}" aria-label="Edit ${escapeHtml(ingredient.name)}" title="Edit ${escapeHtml(ingredient.name)}">${renderActionIcon('edit')}</button>
+          <button type="button" class="danger icon-action" data-remove-ingredient="${ingredient.id}" aria-label="Remove ${escapeHtml(ingredient.name)}" title="Remove ${escapeHtml(ingredient.name)}">${renderActionIcon('remove')}</button>
+        </div>
+      </td>
     `;
 
     ingredientTableBody.appendChild(row);
   });
 
   if (!filteredIngredients.length) {
-    ingredientTableBody.innerHTML = `<tr><td colspan="4" class="empty">${searchTerm ? 'No matching ingredients.' : 'No ingredients yet.'}</td></tr>`;
+    ingredientTableBody.innerHTML = `<tr><td colspan="5" class="empty">${searchTerm ? 'No matching ingredients.' : 'No ingredients yet.'}</td></tr>`;
   }
 
   ingredientTableBody.querySelectorAll('[data-edit-ingredient]').forEach((button) => {
@@ -915,34 +910,8 @@ function renderDishes() {
   dishTableBody.innerHTML = '';
   const searchTerm = dishSearchInput.value.trim().toLocaleLowerCase();
 
-  const sortMode = dishSortSelect.value;
   const getRankingCount = (dish) => Number(dish.historical_times) || 0;
   const sortedDishes = [...state.dishes].sort((left, right) => {
-    if (sortMode === 'name') {
-      return left.name.localeCompare(right.name);
-    }
-    if (sortMode === 'type') {
-      const leftType = left.dish_type || '';
-      const rightType = right.dish_type || '';
-      if (!leftType || !rightType) {
-        if (!leftType && rightType) return 1;
-        if (!rightType && leftType) return -1;
-      }
-      const typeComparison = leftType.localeCompare(rightType, undefined, { sensitivity: 'base' });
-      return typeComparison || left.name.localeCompare(right.name);
-    }
-    if (sortMode === 'cost-asc' || sortMode === 'cost-desc') {
-      const leftCost = calculateDishCost(left.ingredients);
-      const rightCost = calculateDishCost(right.ingredients);
-      if (leftCost === null || rightCost === null) {
-        if (leftCost === null && rightCost !== null) return 1;
-        if (rightCost === null && leftCost !== null) return -1;
-      } else if (leftCost !== rightCost) {
-        return sortMode === 'cost-asc' ? leftCost - rightCost : rightCost - leftCost;
-      }
-      return left.name.localeCompare(right.name);
-    }
-
     const leftIsLeftovers = isLeftoversDish(left);
     const rightIsLeftovers = isLeftoversDish(right);
     if (leftIsLeftovers !== rightIsLeftovers) {
@@ -957,47 +926,32 @@ function renderDishes() {
     .toLowerCase()
     .includes(searchTerm));
   const start = updateCollectionPagination('dishes', sortedDishes.length, dishPagePrev, dishPageNext, dishPageLabel);
-  let visibleRank = sortMode === 'historical'
-    ? sortedDishes.slice(0, start).filter((dish) => getRankingCount(dish) > 0 && !isLeftoversDish(dish)).length
-    : 0;
-
   sortedDishes.slice(start, start + collectionPageSize).forEach((dish) => {
     const row = document.createElement('tr');
     const rating = Number(dish.rating) || 0;
     const ratingLabel = rating ? '★'.repeat(rating) : '';
-    const rankingCount = getRankingCount(dish);
-    const rankedDish = sortMode === 'historical' && rankingCount > 0 && !isLeftoversDish(dish);
-    if (rankedDish) {
-      visibleRank += 1;
-    }
-    const ranking = rankedDish
-      ? `<span class="dish-rank" aria-label="${sortMode === 'week' ? 'This week' : 'Historical'} rank ${visibleRank}; ${rankingCount} ${rankingCount === 1 ? 'plan' : 'plans'}">#${visibleRank}<span>${rankingCount} ${rankingCount === 1 ? 'plan' : 'plans'}</span></span>`
-      : '';
     row.innerHTML = `
       <td data-label="Dish">
-        <div class="dish-name-cell">
-          <div class="dish-title-group">
-            <strong>${escapeHtml(dish.name)}</strong>
-            ${ranking}
-          </div>
-          <div class="table-actions">
-            <button type="button" class="secondary icon-action" data-edit-dish="${dish.id}" aria-label="Edit ${escapeHtml(dish.name)}" title="Edit ${escapeHtml(dish.name)}">${renderActionIcon('edit')}</button>
-            <button type="button" class="danger icon-action" data-remove-dish="${dish.id}" aria-label="Remove ${escapeHtml(dish.name)}" title="Remove ${escapeHtml(dish.name)}">${renderActionIcon('remove')}</button>
-          </div>
-        </div>
+        <strong>${escapeHtml(dish.name)}</strong>
         ${ratingLabel ? `<span class="dish-rating" aria-label="${rating} out of 5 stars">${ratingLabel}</span>` : ''}
       </td>
       <td data-label="Type">${dish.dish_type ? renderCategoryBadge(dish.dish_type) : '—'}</td>
       <td data-label="Serves">${Number(dish.servings) || 1}</td>
       <td data-label="Cost">${formatDishCost(dish)}</td>
       <td data-label="Ingredients">${dish.ingredients.map((ingredient) => `${escapeHtml(ingredient.name || 'Ingredient')} (${Number(ingredient.quantity)})`).join(', ') || 'No ingredients yet'}</td>
+      <td class="collection-action-cell">
+        <div class="table-actions">
+          <button type="button" class="secondary icon-action" data-edit-dish="${dish.id}" aria-label="Edit ${escapeHtml(dish.name)}" title="Edit ${escapeHtml(dish.name)}">${renderActionIcon('edit')}</button>
+          <button type="button" class="danger icon-action" data-remove-dish="${dish.id}" aria-label="Remove ${escapeHtml(dish.name)}" title="Remove ${escapeHtml(dish.name)}">${renderActionIcon('remove')}</button>
+        </div>
+      </td>
     `;
 
     dishTableBody.appendChild(row);
   });
 
   if (!sortedDishes.length) {
-    dishTableBody.innerHTML = `<tr><td colspan="5" class="empty">${searchTerm ? 'No matching meals.' : 'No meals yet.'}</td></tr>`;
+    dishTableBody.innerHTML = `<tr><td colspan="6" class="empty">${searchTerm ? 'No matching meals.' : 'No meals yet.'}</td></tr>`;
   }
 
   dishTableBody.querySelectorAll('[data-edit-dish]').forEach((button) => {

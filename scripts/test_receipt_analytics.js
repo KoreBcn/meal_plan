@@ -75,6 +75,7 @@ test('spending details load and display supermarkets', async () => {
   assert.ok(html.includes(`<td data-label="Discount">${discount}</td>`));
   assert.doesNotMatch(html, /Netto Plus rabat/);
   const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
+  const chartMoney = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
   assert.equal(elements.get('receipt-date-total').textContent, money.format(50));
   assert.equal(elements.get('receipt-date-discount').textContent, money.format(12.5));
 
@@ -108,15 +109,15 @@ test('spending details load and display supermarkets', async () => {
   `, context);
   let summary = elements.get('receipt-supermarket-summary').innerHTML;
   assert.match(summary, /class="receipt-bar-chart"/);
-  assert.ok(summary.includes(`Føtex &lt;store&gt;: ${money.format(29)}; discounts: ${money.format(10)}`));
-  assert.ok(summary.includes(`Unknown: ${money.format(25)}`));
-  assert.ok(summary.includes(`Netto: ${money.format(25)}`));
+  assert.ok(summary.includes(`Føtex &lt;store&gt;: ${chartMoney.format(29)}; discounts: ${chartMoney.format(10)}`));
+  assert.ok(summary.includes(`Unknown: ${chartMoney.format(25)}`));
+  assert.ok(summary.includes(`Netto: ${chartMoney.format(25)}`));
   vm.runInContext("receiptAnalytics.month = '10'; renderReceiptAnalytics()", context);
   summary = elements.get('receipt-supermarket-summary').innerHTML;
-  assert.ok(summary.includes(`Føtex &lt;store&gt;: ${money.format(29)}; discounts: ${money.format(10)}`));
+  assert.ok(summary.includes(`Føtex &lt;store&gt;: ${chartMoney.format(29)}; discounts: ${chartMoney.format(10)}`));
   vm.runInContext("receiptAnalytics.supermarket = 'Unknown'; renderReceiptAnalytics()", context);
   summary = elements.get('receipt-supermarket-summary').innerHTML;
-  assert.ok(summary.includes(`Unknown: ${money.format(25)}`));
+  assert.ok(summary.includes(`Unknown: ${chartMoney.format(25)}`));
   assert.doesNotMatch(summary, /Netto|Føtex/);
   vm.runInContext("receiptAnalytics.itemSearch = 'missing'; renderReceiptAnalytics()", context);
   assert.match(elements.get('receipt-supermarket-summary').innerHTML, /No positive supermarket totals/);
@@ -163,9 +164,32 @@ test('insights ignores spending selections but respects filter pane and paginati
     receiptAnalytics.rows.push({date:'2023-01-01', item_id:'bread', item:'Bread', category:'Bakery', supermarket:'Other', amount:'1', price:1000});
     renderReceiptAnalytics();
   `, context);
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2 (13 items)');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
   assert.match(elements.get('receipt-category-summary').innerHTML, /Bakery/);
   assert.match(elements.get('receipt-supermarket-summary').innerHTML, /Other/);
+  vm.runInContext("activateReceiptTab('all-items')", context);
+  assert.equal(elements.get('receipt-review-filter').hidden, false);
+  elements.get('receipt-review-only').checked = true;
+  elements.get('receipt-review-only').listeners.change();
+  vm.runInContext("activateReceiptTab('insights')", context);
+  assert.equal(elements.get('receipt-review-filter').hidden, true);
+  assert.equal(vm.runInContext('receiptAnalytics.reviewOnly', context), true);
+  vm.runInContext("activateReceiptTab('all-items')", context);
+  assert.equal(elements.get('receipt-review-filter').hidden, false);
+  assert.equal(elements.get('receipt-review-only').checked, true);
+  elements.get('receipt-review-only').checked = false;
+  elements.get('receipt-review-only').listeners.change();
+  const categoryButton = elements.get('receipt-show-categories');
+  const supermarketButton = elements.get('receipt-show-supermarkets');
+  for (const button of [categoryButton, supermarketButton]) {
+    button.setAttribute = (name, value) => { button[name] = value; };
+  }
+  supermarketButton.listeners.click();
+  assert.equal(supermarketButton['aria-pressed'], 'true');
+  assert.equal(elements.get('receipt-supermarket-summary').hidden, false);
+  categoryButton.listeners.click();
+  assert.equal(categoryButton['aria-pressed'], 'true');
+  assert.equal(elements.get('receipt-category-summary').hidden, false);
   const categoryChart = elements.get('receipt-category-summary');
   const foodBar = {
     dataset: { barCategories: JSON.stringify(['Food']) },
@@ -174,11 +198,11 @@ test('insights ignores spending selections but respects filter pane and paginati
   categoryChart.querySelectorAll = () => [foodBar];
   categoryChart.listeners.click({ target: { closest: () => foodBar } });
   assert.equal(foodBar['aria-pressed'], 'true');
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2 (12 items)');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
   assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Bread/);
   categoryChart.listeners.click({ target: { closest: () => foodBar } });
   assert.equal(foodBar['aria-pressed'], 'false');
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2 (13 items)');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
 
   elements.get('receipt-category-filter').value = 'Food';
   elements.get('receipt-category-filter').listeners.change();
@@ -186,16 +210,16 @@ test('insights ignores spending selections but respects filter pane and paginati
   elements.get('receipt-supermarket-filter').listeners.change();
   elements.get('receipt-item-search').value = 'milk';
   elements.get('receipt-item-search').listeners.input();
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2 (12 items)');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
   assert.doesNotMatch(elements.get('receipt-category-summary').innerHTML, /Bakery/);
   assert.doesNotMatch(elements.get('receipt-supermarket-summary').innerHTML, /Other/);
   elements.get('receipt-top-next').listeners.click();
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2 (12 items)');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
   assert.match(elements.get('receipt-top-items').innerHTML, /Milk 11/);
   elements.get('receipt-summary').listeners.click({
     target: { closest: () => ({ dataset: { receiptMonth: '02' } }) }
   });
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2 (12 items)');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
   assert.match(elements.get('receipt-top-items').innerHTML, /Milk 11/);
 
   elements.get('receipt-year-filter').value = '2023';
@@ -232,10 +256,49 @@ test('insights ignores spending selections but respects filter pane and paginati
   categoryChart.querySelectorAll = () => [otherBar];
   categoryChart.listeners.click({ target: { closest: () => otherBar } });
   assert.equal(otherBar['aria-pressed'], 'true');
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 1 (2 items)');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 1');
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 10/);
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 11/);
   assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Item 9/);
+  elements.get('receipt-item-search').value = 'Item 0';
+  elements.get('receipt-item-search').listeners.input();
+  assert.match(elements.get('receipt-top-items').innerHTML, /Item 0/);
+
+  vm.runInContext(`
+    receiptAnalytics.itemSearch = '';
+    receiptAnalytics.rows = Array.from({length: 12}, (_, i) => ({
+      date:'2024-02-01', item_id:String(i), item:'Item ' + i,
+      category:'Food', supermarket:'Shop ' + i, amount:'1', price:12-i
+    }));
+    receiptAnalytics.rows.push(
+      {date:'2024-02-01', item_id:'unknown-a', item:'Unknown A', category:'Food', supermarket:null, amount:'1', price:0.2},
+      {date:'2024-02-01', item_id:'unknown-b', item:'Unknown B', category:'Food', supermarket:' ', amount:'1', price:0.2}
+    );
+    renderReceiptAnalytics();
+  `, context);
+  supermarketButton.listeners.click();
+  const supermarketChart = elements.get('receipt-supermarket-summary');
+  assert.match(supermarketChart.innerHTML, /data-bar-supermarkets="\[&quot;Shop 10&quot;,&quot;Shop 11&quot;,&quot;Unknown&quot;\]"/);
+  const otherSupermarkets = {
+    dataset: { barSupermarkets: JSON.stringify(['Shop 10', 'Shop 11', 'Unknown']) },
+    setAttribute(name, value) { this[name] = value; }
+  };
+  supermarketChart.querySelectorAll = () => [otherSupermarkets];
+  supermarketChart.listeners.click({ target: { closest: () => otherSupermarkets } });
+  assert.equal(otherSupermarkets['aria-pressed'], 'true');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 1');
+  assert.match(elements.get('receipt-top-items').innerHTML, /Item 10/);
+  assert.match(elements.get('receipt-top-items').innerHTML, /Unknown A/);
+  assert.match(elements.get('receipt-top-items').innerHTML, /Unknown B/);
+  assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Item 9/);
+  supermarketChart.listeners.click({ target: { closest: () => otherSupermarkets } });
+  assert.equal(otherSupermarkets['aria-pressed'], 'false');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
+  supermarketChart.listeners.click({ target: { closest: () => otherSupermarkets } });
+  categoryButton.listeners.click();
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
+  supermarketButton.listeners.click();
+  supermarketChart.listeners.click({ target: { closest: () => otherSupermarkets } });
   elements.get('receipt-item-search').value = 'Item 0';
   elements.get('receipt-item-search').listeners.input();
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 0/);
@@ -258,24 +321,32 @@ test('calendar groups shopping days and reveals only selected matching receipts'
     receiptAnalytics.year = '2024';
     receiptAnalytics.month = '02';
     receiptAnalytics.rows = [
-      { date:'2024-02-29', item:'Milk', item_id:'1', amount:'1', price:20, discount:2, discount_plus:1, supermarket:'A <shop>' },
+      { date:'2024-02-29', item:'Milk', item_id:'1', amount:'1', price:20.75, discount:2.25, discount_plus:1, supermarket:'A <shop>' },
       { date:'2024-02-29', item:'Eggs', item_id:'2', amount:'1', price:10, discount:1, supermarket:'B' },
+      { date:'2024-02-01', item:'Small', item_id:'4', amount:'1', price:6, supermarket:'B' },
+      { date:'2024-02-02', item:'Free', item_id:'5', amount:'1', price:0, supermarket:'B' },
       { date:'2024-03-01', item:'Other', item_id:'3', amount:'1', price:100 }
     ];
     renderReceiptCalendar(filteredReceiptRows());
   `, context);
   const calendar = elements.get('receipt-calendar').innerHTML;
   assert.equal((calendar.match(/class="receipt-calendar-day/g) || []).length, 29);
-  assert.equal((calendar.match(/data-receipt-date=/g) || []).length, 1);
+  assert.equal((calendar.match(/data-receipt-date=/g) || []).length, 3);
   assert.match(calendar, /data-receipt-date="2024-02-29"/);
+  assert.match(calendar, /receipt-calendar-heat-5" data-receipt-date="2024-02-29"/);
+  assert.match(calendar, /receipt-calendar-heat-1" data-receipt-date="2024-02-01"/);
+  assert.match(calendar, /receipt-calendar-heat-1" data-receipt-date="2024-02-02"/);
   assert.match(calendar, /A &lt;shop&gt;, B/);
   const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
-  assert.ok(calendar.includes(`${money.format(30)} spent`));
-  assert.ok(calendar.includes(`${money.format(4)} saved`));
+  const chartMoney = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
+  assert.ok(calendar.includes(`${chartMoney.format(30.75)} spent`));
+  assert.ok(calendar.includes(`${chartMoney.format(4.25)} saved`));
   assert.equal(elements.get('receipt-date-card').hidden, true);
   vm.runInContext("receiptAnalytics.selectedDate = '2024-02-29'; renderSpendingDetails()", context);
   assert.equal(elements.get('receipt-date-card').hidden, false);
-  assert.equal(elements.get('receipt-date-total').textContent, money.format(30));
+  assert.equal(elements.get('receipt-date-total').textContent, money.format(30.75));
+  vm.runInContext("receiptAnalytics.selectedDate = null; renderReceiptCalendar(receiptAnalytics.rows.filter(row => row.date === '2024-02-02'))", context);
+  assert.match(elements.get('receipt-calendar').innerHTML, /receipt-calendar-heat-1" data-receipt-date="2024-02-02"/);
   vm.runInContext("receiptAnalytics.supermarket = 'missing'; renderReceiptCalendar(filteredReceiptRows())", context);
   assert.equal(elements.get('receipt-date-card').hidden, true);
 });
@@ -297,11 +368,15 @@ test('top items paginate all results', () => {
     const rows = Array.from({length: 25}, (_, i) => ({item_id: String(i), item:'Item ' + i, amount:'1', price:25 - i, category:'Food'}));
     renderTopReceiptItems(rows);
   `, context);
-  assert.equal((elements.get('receipt-top-items').innerHTML.match(/<tr>/g) || []).length, 10);
-  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 3 (25 items)');
+  assert.equal((elements.get('receipt-top-items').innerHTML.match(/class="receipt-top-row"/g) || []).length, 10);
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 3');
+  assert.match(elements.get('receipt-top-items').innerHTML, /--receipt-item-bar: 100%/);
   vm.runInContext('receiptAnalytics.topPage = 2; renderTopReceiptItems(rows)', context);
-  assert.equal((elements.get('receipt-top-items').innerHTML.match(/<tr>/g) || []).length, 5);
+  assert.equal((elements.get('receipt-top-items').innerHTML.match(/class="receipt-top-row"/g) || []).length, 5);
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 24/);
+  assert.match(elements.get('receipt-top-items').innerHTML, /--receipt-item-bar: 4%/);
+  vm.runInContext("renderTopReceiptItems([{item_id:'0',item:'Free',amount:'1',price:0,category:'Food'}])", context);
+  assert.match(elements.get('receipt-top-items').innerHTML, /--receipt-item-bar: 0%/);
 });
 
 test('bar charts rank the top 10 and group the rest without losing totals', () => {
@@ -326,7 +401,7 @@ test('bar charts rank the top 10 and group the rest without losing totals', () =
   `, context);
   const chart = elements.get('receipt-category-summary').innerHTML;
   const supermarkets = elements.get('receipt-supermarket-summary').innerHTML;
-  const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
+  const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
   assert.equal((chart.match(/class="receipt-bar"/g) || []).length, 11);
   assert.equal((supermarkets.match(/class="receipt-bar"/g) || []).length, 11);
   assert.ok(chart.includes(`<span class="receipt-bar-label">Category 0</span><span class="receipt-bar-amount">${money.format(12)}</span>`));
@@ -465,12 +540,14 @@ test('KPIs follow the selected month and day while averages follow the filtered 
     renderReceiptMonthlySummary(filteredReceiptRows(false));
     renderAllReceiptItems();
   `, context);
-  const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
+  const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
   let kpis = elements.get('receipt-kpis').innerHTML;
   assert.ok(kpis.includes(money.format(130)));
   assert.ok(kpis.includes(money.format(165)));
   assert.ok(kpis.includes(money.format(18)));
   assert.ok(kpis.includes(money.format(19)));
+  assert.match(kpis, /2024 avg\.:/);
+  assert.doesNotMatch(kpis, /monthly average|January/);
   assert.ok(elements.get('receipt-summary').innerHTML.includes(`<span class="receipt-month-value">${money.format(130)}</span>`));
   vm.runInContext("receiptAnalytics.selectedDate = '2024-01-01'; renderReceiptKpis()", context);
   kpis = elements.get('receipt-kpis').innerHTML;
@@ -484,7 +561,7 @@ test('KPIs follow the selected month and day while averages follow the filtered 
   assert.equal((kpis.match(new RegExp(money.format(100), 'g')) || []).length, 2);
   vm.runInContext("receiptAnalytics.selectedDate = '2024-01-02'; renderReceiptAnalytics()", context);
   assert.equal(vm.runInContext('receiptAnalytics.selectedDate', context), null);
-  assert.ok(elements.get('receipt-kpis').innerHTML.includes('January 2024'));
+  assert.ok(elements.get('receipt-kpis').innerHTML.includes('Jan 2024'));
   vm.runInContext("receiptAnalytics.supermarket = ''; renderAllReceiptItems()", context);
   assert.equal((elements.get('receipt-all-items').innerHTML.match(/<tr>/g) || []).length, 20);
   assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 3 (41 items)');
@@ -493,6 +570,43 @@ test('KPIs follow the selected month and day while averages follow the filtered 
   vm.runInContext("receiptAnalytics.supermarket = 'Netto'; renderAllReceiptItems()", context);
   assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 1 (1 items)');
   assert.match(elements.get('receipt-all-items').innerHTML, /Item 0/);
+});
+
+test('KPIs and charts round values without rounding receipt details', () => {
+  const elements = new Map();
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { classList: { toggle() {} } });
+        return elements.get(id);
+      },
+      querySelectorAll: () => []
+    }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source.replace('initReceiptAnalytics();', ''), context);
+  vm.runInContext(`
+    receiptAnalytics.year = '2024';
+    receiptAnalytics.month = '02';
+    receiptAnalytics.selectedDate = '2024-02-01';
+    receiptAnalytics.rows = [{date:'2024-02-01', item_id:'1', item:'Milk', category:'Dairy',
+      amount:'1', price:10.75, price_per_unit:10.75, discount:1.25, supermarket:'Shop'}];
+    renderReceiptKpis();
+    renderReceiptMonthlySummary(filteredReceiptRows(false));
+    renderReceiptCategories(filteredReceiptRows(false));
+    renderTopReceiptItems(filteredReceiptRows(false));
+    renderSpendingDetails();
+  `, context);
+  const chartMoney = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
+  const exactMoney = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
+  for (const id of ['receipt-kpis', 'receipt-summary', 'receipt-category-summary', 'receipt-top-items']) {
+    assert.ok(elements.get(id).innerHTML.includes(chartMoney.format(10.75)));
+    assert.ok(!elements.get(id).innerHTML.includes(exactMoney.format(10.75)));
+  }
+  assert.equal(elements.get('receipt-date-total').textContent, exactMoney.format(10.75));
+  const trend = vm.runInContext("renderPriceTrendChart([{date:'2024-02-01', price_per_unit:10.75}])", context);
+  assert.ok(trend.includes(chartMoney.format(10.75)));
+  assert.ok(!trend.includes(exactMoney.format(10.75)));
 });
 
 test('clear checks updates all persisted checked rows, including hidden items', async () => {
@@ -519,7 +633,7 @@ test('clear checks updates all persisted checked rows, including hidden items', 
   assert.deepEqual(context.state.shoppingChecks, { visible: false, hidden: false });
 });
 
-test('ingredient and dish pages retain sorting and historical ranks', () => {
+test('ingredient and dish pages retain ordering without displaying historical ranks', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'script.js'), 'utf8');
   const extract = (name) => source.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`))[0];
   const makeTable = () => ({
@@ -540,7 +654,6 @@ test('ingredient and dish pages retain sorting and historical ranks', () => {
     dishTableBody: dishes,
     ingredientSearchInput: { value: '' },
     dishSearchInput: { value: '' },
-    dishSortSelect: { value: 'historical' },
     ingredientPagePrev: {}, ingredientPageNext: {}, ingredientPageLabel: {},
     dishPagePrev: {}, dishPageNext: {}, dishPageLabel: {},
     escapeHtml: String,
@@ -563,7 +676,10 @@ test('ingredient and dish pages retain sorting and historical ranks', () => {
   assert.equal(dishes.rows.length, 10);
   vm.runInContext('collectionPages.ingredients = 2; collectionPages.dishes = 1; renderIngredients(); renderDishes()', context);
   assert.equal(ingredients.rows.length, 1);
-  assert.match(dishes.rows[0].innerHTML, /Historical rank 11/);
+  assert.match(dishes.rows[0].innerHTML, /Dish 10/);
+  assert.doesNotMatch(dishes.rows[0].innerHTML, /dish-rank|Historical rank|plans/);
+  assert.match(dishes.rows[0].innerHTML, /class="collection-action-cell"/);
+  assert.match(ingredients.rows[0].innerHTML, /class="collection-action-cell"/);
   vm.runInContext("ingredientSearchInput.value = 'Ingredient 20'; renderIngredients()", context);
   assert.equal(context.ingredientPageLabel.textContent, 'Page 1 of 1 (1 items)');
 });

@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Meal Plan Planner</title>
-    <link rel="stylesheet" href="style.css?v=15" />
+    <meta name="theme-color" content="#193c32" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="A&amp;C" />
+    <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
+    <link rel="apple-touch-icon" href="assets/app-icon-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="style.css?v=19" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -31,7 +37,7 @@
       <aside class="sidebar">
         <div class="sidebar-top">
           <a class="brand" href="#" aria-label="Meal Plan home">
-            <span class="brand-mark" aria-hidden="true">M</span>
+            <img class="brand-mark" src="assets/app-icon.svg" alt="" />
             <span>Meal Plan</span>
           </a>
           <button type="button" id="menu-toggle" class="menu-toggle" aria-controls="primary-navigation" aria-expanded="false" aria-label="Open navigation menu">
@@ -101,11 +107,11 @@
           <div class="collection-toolbar">
             <div class="collection-filters">
               <label for="ingredient-search">
-                <span>Search ingredients</span>
+                <span class="visually-hidden">Search ingredients</span>
                 <input id="ingredient-search" type="search" placeholder="Search by name or category" />
               </label>
             </div>
-            <button type="button" id="new-ingredient" class="primary add-item-button" aria-label="Add ingredient" title="Add ingredient"><span aria-hidden="true">+</span></button>
+            <button type="button" id="new-ingredient" class="primary add-item-button" aria-label="Add ingredient" title="Add ingredient"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg></button>
           </div>
           <div class="table-wrap mobile-card-table">
             <table id="ingredient-table">
@@ -115,6 +121,7 @@
                   <th>Category</th>
                   <th>Unit</th>
                   <th>Price</th>
+                  <th><span class="visually-hidden">Actions</span></th>
                 </tr>
               </thead>
               <tbody id="ingredient-table-body"></tbody>
@@ -193,21 +200,11 @@
           <div class="collection-toolbar">
             <div class="collection-filters">
               <label for="dish-search">
-                <span>Search meals</span>
+                <span class="visually-hidden">Search meals</span>
                 <input id="dish-search" type="search" placeholder="Search by name or ingredient" />
               </label>
-              <label for="dish-sort">
-                <span>Sort by</span>
-                <select id="dish-sort" data-searchable="false">
-                  <option value="historical">Historical ranking</option>
-                  <option value="name">Dish name (A–Z)</option>
-                  <option value="type">Type (A–Z)</option>
-                  <option value="cost-asc">Cost (low to high)</option>
-                  <option value="cost-desc">Cost (high to low)</option>
-                </select>
-              </label>
             </div>
-            <button type="button" id="new-dish" class="primary add-item-button" aria-label="Add dish" title="Add dish"><span aria-hidden="true">+</span></button>
+            <button type="button" id="new-dish" class="primary add-item-button" aria-label="Add dish" title="Add dish"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg></button>
           </div>
           <div class="table-wrap mobile-card-table dish-table-wrap">
             <table id="dish-table">
@@ -218,6 +215,7 @@
                   <th>Serves</th>
                   <th>Cost</th>
                   <th>Ingredients</th>
+                  <th><span class="visually-hidden">Actions</span></th>
                 </tr>
               </thead>
               <tbody id="dish-table-body"></tbody>
@@ -264,7 +262,7 @@
               <button type="button" id="receipt-tab-all-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-all-items" data-receipt-tab="all-items" tabindex="-1">Mappings</button>
             </div>
           </div>
-          <div class="receipt-analytics-toolbar">
+          <div id="receipt-analytics-toolbar" class="receipt-analytics-toolbar">
             <select id="receipt-year-filter" aria-label="Filter by year" data-searchable="false" disabled>
               <option value="">Select year</option>
             </select>
@@ -275,6 +273,7 @@
               <option value="">All supermarkets</option>
             </select>
             <input id="receipt-item-search" type="search" aria-label="Filter by item" placeholder="Filter by item" disabled />
+            <label id="receipt-review-filter" class="receipt-review-filter" hidden><input type="checkbox" id="receipt-review-only" /> Show only items needing a category</label>
           </div>
           <p id="receipt-uncategorized-alert" class="receipt-uncategorized-alert" role="status" hidden></p>
           <p id="receipt-status" class="status-message" role="status" aria-live="polite"></p>
@@ -307,27 +306,27 @@
           </section>
           <section id="receipt-panel-insights" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-insights" hidden>
             <div class="receipt-insights-layout">
-            <section class="receipt-card">
-              <div class="receipt-card-heading"><h3>Top Items</h3></div>
-              <div class="table-wrap mobile-card-table">
-                <table aria-label="Top bought items">
-                  <thead><tr><th>Item</th><th>Total spend</th></tr></thead>
+            <section class="receipt-card receipt-top-card">
+              <div class="receipt-card-heading"><p class="eyebrow">ITEM INSIGHTS</p></div>
+              <div class="table-wrap mobile-card-table receipt-top-table-wrap">
+                <table class="receipt-top-table" aria-label="Top bought items">
+                  <thead class="visually-hidden"><tr><th>Item</th><th>Total spend</th></tr></thead>
                   <tbody id="receipt-top-items"></tbody>
                 </table>
               </div>
               <div class="receipt-pagination">
-                <button type="button" id="receipt-top-prev" class="secondary">Previous</button>
+                <button type="button" id="receipt-top-prev" class="secondary receipt-page-arrow" aria-label="Previous top items page" title="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
                 <span id="receipt-top-label" aria-live="polite"></span>
-                <button type="button" id="receipt-top-next" class="secondary">Next</button>
+                <button type="button" id="receipt-top-next" class="secondary receipt-page-arrow" aria-label="Next top items page" title="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
               </div>
             </section>
-            <section class="receipt-card">
+            <section class="receipt-card receipt-breakdown-card">
               <div class="receipt-card-heading">
-                <div>
-                  <p class="eyebrow">SPENDING BREAKDOWN</p>
-                  <h3 id="receipt-insights-title">Spend by category</h3>
+                <p class="eyebrow">SPENDING BREAKDOWN</p>
+                <div class="receipt-breakdown-controls" role="group" aria-label="Spending breakdown view">
+                  <button type="button" id="receipt-show-categories" class="secondary receipt-breakdown-button" aria-label="Show categories" title="Categories" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></button>
+                  <button type="button" id="receipt-show-supermarkets" class="secondary receipt-breakdown-button" aria-label="Show supermarkets" title="Supermarkets" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10M3 10l2-6h14l2 6M3 10h18M9 20v-6h6v6"/></svg></button>
                 </div>
-                <button type="button" id="receipt-insights-toggle" class="secondary" aria-pressed="false">Show supermarkets</button>
               </div>
               <div id="receipt-category-summary" class="receipt-category-summary"></div>
               <div id="receipt-supermarket-summary" class="receipt-supermarket-summary" hidden></div>
@@ -337,13 +336,8 @@
           <section id="receipt-panel-all-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-all-items" hidden>
             <section class="receipt-card">
               <div class="receipt-card-heading">
-                <div>
-                  <p class="eyebrow">ITEM DIMENSION</p>
-                  <h3>Mappings</h3>
-                  <p>Review suggested categories or assign them manually. Suggestions are never saved automatically.</p>
-                </div>
+                <h3>Mappings</h3>
               </div>
-              <label class="receipt-review-filter"><input type="checkbox" id="receipt-review-only" /> Show only items needing a category</label>
               <datalist id="receipt-category-suggestions"></datalist>
               <div class="table-wrap mobile-card-table">
                 <table>
@@ -365,7 +359,7 @@
                   <p class="eyebrow">PURCHASE HISTORY</p>
                   <h3 id="receipt-price-trend-title">Price per unit trend</h3>
                 </div>
-                <button type="button" id="receipt-price-trend-close" class="secondary" aria-label="Close price trend">Close</button>
+                <button type="button" id="receipt-price-trend-close" class="receipt-price-trend-close" aria-label="Close price trend" title="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
               </div>
               <div id="receipt-price-trend-chart" class="receipt-price-trend-chart"></div>
             </section>
@@ -384,7 +378,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
-    <script src="js/script.js"></script>
-    <script src="js/receipt-analytics.js?v=16"></script>
+    <script src="js/script.js?v=1"></script>
+    <script src="js/receipt-analytics.js?v=20"></script>
   </body>
 </html>
