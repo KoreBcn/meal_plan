@@ -226,9 +226,11 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
   assert.match(elements.get('receipt-top-items').innerHTML, /Milk 11/);
 
+  const mappingsBeforeYearChange = elements.get('receipt-all-items').innerHTML;
   elements.get('receipt-year-filter').value = '2023';
   elements.get('receipt-year-filter').listeners.change();
   assert.match(elements.get('receipt-top-items').innerHTML, /No items match/);
+  assert.equal(elements.get('receipt-all-items').innerHTML, mappingsBeforeYearChange);
 
   const chart = elements.get('receipt-category-summary');
   const detail = { textContent: '' };
@@ -323,9 +325,26 @@ test('insights ignores spending selections but respects filter pane and paginati
   elements.get('receipt-item-search').value = 'Item 0';
   elements.get('receipt-item-search').listeners.input();
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 0/);
+
+  vm.runInContext(`
+    receiptAnalytics.category = '';
+    receiptAnalytics.supermarket = '';
+    receiptAnalytics.itemSearch = '';
+    receiptAnalytics.items = Array.from({length: 25}, (_, i) => ({id:String(i), name:'Item ' + i, category:'Food'}));
+    receiptAnalytics.mappingPage = 1;
+    renderReceiptAnalytics();
+  `, context);
+  assert.equal(elements.get('receipt-page-label').textContent, 'Page 2 of 2');
+  elements.get('receipt-year-filter').value = '2023';
+  elements.get('receipt-year-filter').listeners.change();
+  assert.equal(elements.get('receipt-page-label').textContent, 'Page 2 of 2');
+  elements.get('receipt-summary').listeners.click({
+    target: { closest: () => ({ dataset: { receiptMonth: '03' } }) }
+  });
+  assert.equal(elements.get('receipt-page-label').textContent, 'Page 2 of 2');
 });
 
-test('mapping totals and supermarket filtering ignore year but retain other filters', () => {
+test('mapping totals and supermarket filtering ignore year and month but retain other filters', () => {
   const elements = new Map();
   const context = vm.createContext({
     document: {
@@ -356,10 +375,12 @@ test('mapping totals and supermarket filtering ignore year but retain other filt
   `, context);
   let html = elements.get('receipt-all-items').innerHTML;
   const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
-  assert.match(html, /data-label="Purchases">2</);
-  assert.ok(html.includes(`<td data-label="Total spend">${money.format(30)}</td>`));
+  assert.match(html, /data-label="Purchases">3</);
+  assert.ok(html.includes(`<td data-label="Total spend">${money.format(80)}</td>`));
   assert.doesNotMatch(html, /Bread/);
   vm.runInContext("receiptAnalytics.year = '2023'; renderAllReceiptItems()", context);
+  assert.equal(elements.get('receipt-all-items').innerHTML, html);
+  vm.runInContext("receiptAnalytics.month = '02'; renderAllReceiptItems()", context);
   assert.equal(elements.get('receipt-all-items').innerHTML, html);
   vm.runInContext("receiptAnalytics.itemSearch = 'bread'; renderAllReceiptItems()", context);
   assert.match(elements.get('receipt-all-items').innerHTML, /No items match/);

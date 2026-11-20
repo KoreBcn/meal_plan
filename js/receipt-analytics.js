@@ -91,7 +91,6 @@ function initReceiptAnalytics() {
   receiptYearFilter.addEventListener('change', () => {
     receiptAnalytics.year = receiptYearFilter.value;
     receiptAnalytics.selectedDate = null;
-    receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
@@ -132,7 +131,6 @@ function initReceiptAnalytics() {
     }
     receiptAnalytics.month = button.dataset.receiptMonth;
     receiptAnalytics.selectedDate = null;
-    receiptAnalytics.mappingPage = 0;
     renderReceiptAnalytics();
   });
   const showReceiptBreakdown = (showSupermarkets) => {
@@ -752,7 +750,7 @@ function renderReceiptCategories(rows) {
 }
 
 function renderAllReceiptItems() {
-  const aggregates = new Map(aggregateReceiptItems(filteredReceiptRows(true, false))
+  const aggregates = new Map(aggregateReceiptItems(filteredReceiptRows(false, false))
     .map((item) => [item.itemId, item]));
   const items = receiptAnalytics.items.filter((item) => {
     const category = normalizeCategory(item.category);
