@@ -28,9 +28,10 @@ from googleapiclient.discovery import build
 ACCOUNT_EMAIL = "c2015465@gmail.com"
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 GMAIL_QUERY = "{subject:receipt subject:kvittering}"
-RECEIPT_HISTORY_QUERY = (
-    '{subject:"Netto receipts history" subject:"Anna receipt history"}'
-)
+RECEIPT_HISTORY_SUBJECTS = ("Netto receipts history", "Anna receipt history")
+RECEIPT_HISTORY_QUERY = "{" + " ".join(
+    f'subject:"{subject}"' for subject in RECEIPT_HISTORY_SUBJECTS
+) + "}"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLIENT_SECRET_FILE = PROJECT_ROOT / "credentials.json"
 TOKEN_FILE = PROJECT_ROOT / "token.json"
@@ -981,10 +982,6 @@ def read_regular_receipt_rows(service) -> tuple[list[dict], list[str], int]:
             .get(userId="me", id=reference["id"], format="full")
             .execute()
         )
-        rows = extract_receipt(message)
-        if rows:
-            imported_rows.extend(rows)
-            continue
         subject = next(
             (
                 header["value"]
@@ -993,7 +990,17 @@ def read_regular_receipt_rows(service) -> tuple[list[dict], list[str], int]:
             ),
             "(no subject)",
         )
-        unparsed.append(subject)
+        decoded_subject = str(make_header(decode_header(subject)))
+        if any(
+            history_subject.casefold() in decoded_subject.casefold()
+            for history_subject in RECEIPT_HISTORY_SUBJECTS
+        ):
+            continue
+        rows = extract_receipt(message)
+        if rows:
+            imported_rows.extend(rows)
+        else:
+            unparsed.append(subject)
     return imported_rows, unparsed, len(message_refs)
 
 

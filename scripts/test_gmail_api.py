@@ -144,6 +144,28 @@ class ReceiptImportTests(unittest.TestCase):
         self.assertEqual(unparsed, 0)
         self.assertEqual(rows[0]["supermarket"], "Netto")
 
+    def test_regular_import_skips_history_emails(self):
+        html = (
+            "<p>2026-10-29</p><table>"
+            "<tr><td>Milk</td><td>1 stk</td><td>12,00</td></tr></table>"
+        )
+        messages = [
+            gmail_message("Fwd: ANNA RECEIPT HISTORY", html),
+            gmail_message("Netto receipts history", html),
+            gmail_message("=?utf-8?q?Anna_receipt_history?=", html),
+            gmail_message("Receipt from Netto", html),
+            gmail_message("Receipt from another shop", "<p>No items</p>"),
+        ]
+        service = MagicMock()
+        service.users.return_value.messages.return_value.get.return_value.execute.side_effect = messages
+        references = [{"id": str(i)} for i in range(len(messages))]
+        with patch.object(gmail_api, "get_receipt_messages", return_value=references):
+            rows, unparsed, count = gmail_api.read_regular_receipt_rows(service)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["supermarket"], "Netto")
+        self.assertEqual(unparsed, ["Receipt from another shop"])
+        self.assertEqual(count, 5)
+
     def test_existing_facts_refresh_known_supermarket_without_clearing_unknown(self):
         facts = [
             {"source_key": "a", "owner": "C", "supermarket": "Føtex"},
