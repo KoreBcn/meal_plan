@@ -66,35 +66,43 @@ test('spending details load and display supermarkets', async () => {
   assert.ok(selections.receipt_item_facts.split(',').includes('supermarket'));
 
   vm.runInContext('renderSpendingDetails()', context);
-  const html = elements.get('receipt-date-items').innerHTML;
-  assert.match(html, /data-label="Supermarket">Føtex &lt;store&gt;/);
-  assert.match(html, /data-label="Supermarket">—/);
-  assert.match(html, /data-label="Owner">C/);
-  assert.match(html, /data-label="Owner">A/);
-  const discount = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' }).format(7);
-  assert.ok(html.includes(`<td data-label="Discount">${discount}</td>`));
-  assert.doesNotMatch(html, /Netto Plus rabat/);
   const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
   const chartMoney = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
-  assert.equal(elements.get('receipt-date-total').textContent, money.format(50));
-  assert.equal(elements.get('receipt-date-discount').textContent, money.format(12.5));
+  let html = elements.get('receipt-date-items').innerHTML;
+  assert.match(html, /<h3>Føtex &lt;store&gt; · 29\. okt\. 2026<\/h3>/);
+  assert.match(html, /<h3>Unknown · 29\. okt\. 2026<\/h3>/);
+  assert.match(html, /<th scope="col">Item<\/th><th scope="col">Amount<\/th><th scope="col">Price<\/th><th scope="col">Discount<\/th>/);
+  assert.doesNotMatch(html, /<th scope="col">Category<\/th>|<th scope="col">Owner<\/th>/);
+  assert.equal((html.match(/<tbody><tr>/g) || []).length, 2);
+  const [store, unknown] = html.split('<section class="receipt-date-store">').slice(1);
+  assert.ok(store.includes(`<span>Price</span><strong>${money.format(25)}</strong>`));
+  assert.ok(store.includes(`<span>Savings</span><strong>${money.format(9)}</strong>`));
+  assert.ok(unknown.includes(`<span>Price</span><strong>${money.format(25)}</strong>`));
+  assert.ok(unknown.includes(`<span>Savings</span><strong>${money.format(3.5)}</strong>`));
+  assert.ok(store.includes(money.format(7)));
+  vm.runInContext(`
+    receiptAnalytics.rows.push({
+      date:'2026-10-29', item:'<Special>', item_id:'milk', category:'Dairy',
+      amount:'2 stk', price:5, supermarket:'Føtex <store>', discount:null
+    });
+    renderSpendingDetails();
+  `, context);
+  html = elements.get('receipt-date-items').innerHTML;
+  assert.equal((html.match(/<h3>Føtex &lt;store&gt; · 29\. okt\. 2026<\/h3>/g) || []).length, 1);
+  assert.ok(html.includes(`<span>Price</span><strong>${money.format(30)}</strong>`));
+  assert.match(html, /&lt;Special&gt;/);
+  assert.match(html, /title="2 stk">2 stk/);
+  assert.match(html, /title="—">—/);
+  vm.runInContext('receiptAnalytics.rows.pop()', context);
 
   vm.runInContext("receiptAnalytics.itemSearch = 'missing'; renderSpendingDetails()", context);
-  assert.equal(elements.get('receipt-date-discount').textContent, money.format(0));
+  assert.equal(elements.get('receipt-date-items').innerHTML, '');
   vm.runInContext("receiptAnalytics.itemSearch = ''; receiptAnalytics.selectedDate = '2026-10-30'; renderSpendingDetails()", context);
-  assert.equal(elements.get('receipt-date-discount').textContent, money.format(11));
+  assert.ok(elements.get('receipt-date-items').innerHTML.includes(`<span>Savings</span><strong>${money.format(11)}</strong>`));
 
   vm.runInContext("receiptAnalytics.selectedDate = null; renderSpendingDetails()", context);
-  assert.equal(elements.get('receipt-date-discount').textContent, money.format(0));
-  assert.match(elements.get('receipt-date-items').innerHTML, /colspan="8"/);
+  assert.equal(elements.get('receipt-date-items').innerHTML, '');
   const page = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  const header = page.match(/<thead><tr>(.*?)<\/tr><\/thead>\s*<tbody id="receipt-date-items">/s);
-  assert.ok(header);
-  const headings = [...header[1].matchAll(/<th>(.*?)<\/th>/g)].map((match) => match[1]);
-  const firstRow = html.match(/<tr>(.*?)<\/tr>/s);
-  assert.ok(firstRow);
-  const labels = [...firstRow[1].matchAll(/<td data-label="([^"]+)">/g)].map((match) => match[1]);
-  assert.deepEqual(labels, headings);
   assert.match(page, /id="receipt-tab-insights"[^>]*aria-controls="receipt-panel-insights"/);
   assert.match(page, /id="receipt-panel-insights"[^>]*aria-labelledby="receipt-tab-insights"/);
 
@@ -430,7 +438,8 @@ test('calendar groups shopping days and reveals only selected matching receipts'
   assert.equal(elements.get('receipt-date-card').hidden, true);
   vm.runInContext("receiptAnalytics.selectedDate = '2024-02-29'; renderSpendingDetails()", context);
   assert.equal(elements.get('receipt-date-card').hidden, false);
-  assert.equal(elements.get('receipt-date-total').textContent, money.format(30.75));
+  assert.ok(elements.get('receipt-date-items').innerHTML.includes(`<span>Price</span><strong>${money.format(20.75)}</strong>`));
+  assert.ok(elements.get('receipt-date-items').innerHTML.includes(`<span>Savings</span><strong>${money.format(3.25)}</strong>`));
   vm.runInContext("receiptAnalytics.selectedDate = null; renderReceiptCalendar(receiptAnalytics.rows.filter(row => row.date === '2024-02-02'))", context);
   assert.match(elements.get('receipt-calendar').innerHTML, /receipt-calendar-heat-1" data-receipt-date="2024-02-02"/);
   vm.runInContext("receiptAnalytics.supermarket = 'missing'; renderReceiptCalendar(filteredReceiptRows())", context);
@@ -729,7 +738,7 @@ test('KPIs and charts round values without rounding receipt details', () => {
     assert.ok(elements.get(id).innerHTML.includes(chartMoney.format(10.75)));
     assert.ok(!elements.get(id).innerHTML.includes(exactMoney.format(10.75)));
   }
-  assert.equal(elements.get('receipt-date-total').textContent, exactMoney.format(10.75));
+  assert.ok(elements.get('receipt-date-items').innerHTML.includes(`<span>Price</span><strong>${exactMoney.format(10.75)}</strong>`));
   const trend = vm.runInContext("renderPriceTrendChart([{date:'2024-02-01', price_per_unit:10.75}])", context);
   assert.ok(trend.includes(chartMoney.format(10.75)));
   assert.ok(!trend.includes(exactMoney.format(10.75)));

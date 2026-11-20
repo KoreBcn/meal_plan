@@ -2790,9 +2790,8 @@ body[data-theme="dark"] .weekly-chart-count {
 .receipt-date-totals {
   display: flex;
   flex-wrap: wrap;
-  align-self: flex-end;
   gap: 16px;
-  text-align: right;
+  margin: 0 0 12px;
 }
 
 .receipt-date-totals div {
@@ -2940,8 +2939,6 @@ body[data-theme="dark"] .weekly-chart-count {
 }
 
 .receipt-date-dialog {
-  width: min(1100px, calc(100% - 28px));
-  max-width: 1100px;
   max-height: 90vh;
 }
 
@@ -2950,8 +2947,38 @@ body[data-theme="dark"] .weekly-chart-count {
   margin: 0;
 }
 
-.receipt-date-dialog .receipt-card-heading {
+.receipt-date-store + .receipt-date-store {
+  margin-top: 20px;
+}
+
+.receipt-date-store h3 {
+  margin: 0 0 8px;
   padding-right: 36px;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.receipt-date-table {
+  table-layout: fixed;
+}
+
+.receipt-date-table col:nth-child(1) { width: 35%; }
+.receipt-date-table col:nth-child(2) { width: 19%; }
+.receipt-date-table col:nth-child(3) { width: 24%; }
+.receipt-date-table col:nth-child(4) { width: 22%; }
+
+.receipt-card .receipt-date-table th,
+.receipt-card .receipt-date-table td {
+  overflow: hidden;
+  padding: 8px 6px;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receipt-date-table th:not(:first-child),
+.receipt-date-table td:not(:first-child) {
+  text-align: right;
 }
 
 .receipt-date-close {
@@ -3602,6 +3629,20 @@ body[data-theme="dark"] .shopping-item-check input:checked {
 }
 
 @media (max-width: 640px) {
+  .receipt-card .receipt-date-table th,
+  .receipt-card .receipt-date-table td {
+    overflow: hidden;
+    padding: 7px 2px;
+    font-size: 0.7rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .receipt-card .receipt-date-table th {
+    font-size: 0.65rem;
+    letter-spacing: 0;
+  }
+
   .receipt-tab-bar {
     align-items: stretch;
     flex-direction: column;

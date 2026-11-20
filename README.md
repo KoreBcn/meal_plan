@@ -60,6 +60,8 @@ The Analytics view reads receipt facts joined to the item dimension. It defaults
 Mappings can filter to uncategorized items for manual review and category editing.
 Its purchase counts and spending cover all years and months. Category, supermarket and item filters still apply.
 
+Receipt details are grouped by supermarket and date, with price and savings totals followed by compact item, amount, price and discount rows. Savings include regular and Netto Plus discounts.
+
 The calendar shades shopping days by their total relative to the highest daily spend in the selected month. KPIs and charts display rounded currency amounts; receipt details retain their original precision.
 
 To test a clean history import after installing the receipt schema and seeding the dimension, run `python scripts/gmail_api.py --reset-and-netto-history`. The script parses every attachment from both history emails first, refuses to clear facts if any attachment fails parsing, then asks you to type `DELETE ALL RECEIPT FACTS` before deleting only `receipt_item_facts` and reimporting. Item dimensions and their categories, and Gmail messages, are preserved.

@@ -15,8 +15,6 @@ const receiptDateDialog = document.getElementById('receipt-date-dialog');
 const receiptDateClose = document.getElementById('receipt-date-close');
 const receiptDateCard = document.getElementById('receipt-date-card');
 const receiptDateTitle = document.getElementById('receipt-date-title');
-const receiptDateTotal = document.getElementById('receipt-date-total');
-const receiptDateDiscount = document.getElementById('receipt-date-discount');
 const receiptDateItems = document.getElementById('receipt-date-items');
 const receiptTopItems = document.getElementById('receipt-top-items');
 const receiptTopPrev = document.getElementById('receipt-top-prev');
@@ -607,23 +605,31 @@ function renderSpendingDetails() {
   const rows = filteredReceiptRows().filter((row) => row.date === date);
   receiptDateCard.hidden = !date || !rows.length;
   if (receiptDateCard.hidden && receiptDateDialog.open) receiptDateDialog.close();
-  receiptDateTitle.textContent = date ? formatReceiptDate(date) : 'Choose a date';
-  receiptDateTotal.textContent = formatReceiptMoney(rows.reduce((sum, row) => sum + Number(row.price), 0));
-  receiptDateDiscount.textContent = formatReceiptMoney(rows.reduce((sum, row) => sum + receiptDiscount(row), 0));
-  receiptDateItems.innerHTML = rows.length
-    ? rows.map((row) => `
-      <tr>
-        <td data-label="Item">${escapeReceiptHtml(row.item)}</td>
-        <td data-label="Category">${escapeReceiptHtml(row.category || 'Uncategorized')}</td>
-        <td data-label="Amount">${escapeReceiptHtml(row.amount)}</td>
-        <td data-label="Total price">${formatReceiptMoney(Number(row.price))}</td>
-        <td data-label="Price per unit">${row.price_per_unit == null ? '—' : formatReceiptMoney(row.price_per_unit)}</td>
-        <td data-label="Owner">${escapeReceiptHtml(row.owner || '')}</td>
-        <td data-label="Supermarket">${escapeReceiptHtml(row.supermarket || '—')}</td>
-        <td data-label="Discount">${row.discount == null ? '—' : formatReceiptMoney(Number(row.discount))}</td>
-      </tr>
-    `).join('')
-    : '<tr><td colspan="8" class="receipt-empty">No items for this date and year.</td></tr>';
+  receiptDateTitle.textContent = date ? `Receipt details for ${formatReceiptDate(date)}` : 'Receipt details';
+  const supermarkets = new Map();
+  rows.forEach((row) => {
+    const name = row.supermarket?.trim() || 'Unknown';
+    if (!supermarkets.has(name)) supermarkets.set(name, []);
+    supermarkets.get(name).push(row);
+  });
+  receiptDateItems.innerHTML = [...supermarkets.entries()].map(([name, items]) => `
+    <section class="receipt-date-store">
+      <h3>${escapeReceiptHtml(name)} · ${escapeReceiptHtml(formatReceiptDate(date))}</h3>
+      <div class="receipt-date-totals">
+        <div><span>Price</span><strong>${formatReceiptMoney(items.reduce((sum, row) => sum + Number(row.price), 0))}</strong></div>
+        <div><span>Savings</span><strong>${formatReceiptMoney(items.reduce((sum, row) => sum + receiptDiscount(row), 0))}</strong></div>
+      </div>
+      <table class="receipt-date-table">
+        <colgroup><col><col><col><col></colgroup>
+        <thead><tr><th scope="col">Item</th><th scope="col">Amount</th><th scope="col">Price</th><th scope="col">Discount</th></tr></thead>
+        <tbody>${items.map((row) => {
+          const price = formatReceiptMoney(Number(row.price));
+          const discount = row.discount == null ? '—' : formatReceiptMoney(Number(row.discount));
+          return `<tr><td title="${escapeReceiptHtml(row.item)}">${escapeReceiptHtml(row.item)}</td><td title="${escapeReceiptHtml(row.amount)}">${escapeReceiptHtml(row.amount)}</td><td title="${escapeReceiptHtml(price)}">${escapeReceiptHtml(price)}</td><td title="${escapeReceiptHtml(discount)}">${escapeReceiptHtml(discount)}</td></tr>`;
+        }).join('')}</tbody>
+      </table>
+    </section>
+  `).join('');
 }
 
 function receiptDiscount(row) {
