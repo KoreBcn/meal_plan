@@ -11,6 +11,8 @@ const receiptKpis = document.getElementById('receipt-kpis');
 const receiptCalendar = document.getElementById('receipt-calendar');
 const receiptCalendarTitle = document.getElementById('receipt-calendar-title');
 const receiptCalendarDetails = document.getElementById('receipt-calendar-details');
+const receiptDateDialog = document.getElementById('receipt-date-dialog');
+const receiptDateClose = document.getElementById('receipt-date-close');
 const receiptDateCard = document.getElementById('receipt-date-card');
 const receiptDateTitle = document.getElementById('receipt-date-title');
 const receiptDateTotal = document.getElementById('receipt-date-total');
@@ -227,14 +229,30 @@ function initReceiptAnalytics() {
     if (!button) {
       return;
     }
-    receiptAnalytics.selectedDate = receiptAnalytics.selectedDate === button.dataset.receiptDate
-      ? null
-      : button.dataset.receiptDate;
+    receiptAnalytics.selectedDate = button.dataset.receiptDate;
     renderSpendingDetails();
     renderReceiptKpis();
     receiptCalendar.querySelectorAll('[data-receipt-date]').forEach((day) => {
       day.setAttribute('aria-pressed', String(day.dataset.receiptDate === receiptAnalytics.selectedDate));
     });
+    if (!receiptDateDialog.open && !receiptDateCard.hidden) receiptDateDialog.showModal();
+  });
+  receiptDateClose.addEventListener('click', () => receiptDateDialog.close());
+  receiptDateDialog.addEventListener('close', () => {
+    receiptAnalytics.selectedDate = null;
+    renderReceiptKpis();
+    receiptCalendar.querySelectorAll('[data-receipt-date]').forEach((day) => {
+      day.setAttribute('aria-pressed', 'false');
+    });
+  });
+  receiptDateDialog.addEventListener('click', (event) => {
+    if (event.target === receiptDateDialog) receiptDateDialog.close();
+  });
+  receiptDateDialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      receiptDateDialog.close();
+    }
   });
   ['mouseover', 'focusin'].forEach((type) => receiptCalendar.addEventListener(type, (event) => {
     const day = event.target.closest('[data-receipt-details]');
@@ -588,6 +606,7 @@ function renderSpendingDetails() {
   const date = receiptAnalytics.selectedDate;
   const rows = filteredReceiptRows().filter((row) => row.date === date);
   receiptDateCard.hidden = !date || !rows.length;
+  if (receiptDateCard.hidden && receiptDateDialog.open) receiptDateDialog.close();
   receiptDateTitle.textContent = date ? formatReceiptDate(date) : 'Choose a date';
   receiptDateTotal.textContent = formatReceiptMoney(rows.reduce((sum, row) => sum + Number(row.price), 0));
   receiptDateDiscount.textContent = formatReceiptMoney(rows.reduce((sum, row) => sum + receiptDiscount(row), 0));

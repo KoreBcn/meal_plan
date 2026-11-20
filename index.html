@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
     <link rel="apple-touch-icon" href="assets/app-icon-180.png" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="stylesheet" href="style.css?v=21" />
+    <link rel="stylesheet" href="style.css?v=22" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -286,7 +286,10 @@
               <div id="receipt-calendar" class="receipt-calendar" aria-labelledby="receipt-calendar-title"></div>
               <p id="receipt-calendar-details" class="receipt-calendar-details" aria-live="polite">Hover over or focus a shopping day for details.</p>
             </section>
+          </section>
+          <dialog id="receipt-date-dialog" class="receipt-date-dialog" aria-labelledby="receipt-date-title">
             <section id="receipt-date-card" class="receipt-card" hidden>
+              <button type="button" id="receipt-date-close" class="receipt-date-close" aria-label="Close receipt details" title="Close" autofocus><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
               <div class="receipt-card-heading">
                 <div>
                   <p class="eyebrow">SELECTED SHOPPING DATE</p>
@@ -304,7 +307,7 @@
                 </table>
               </div>
             </section>
-          </section>
+          </dialog>
           <section id="receipt-panel-insights" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-insights" hidden>
             <div class="receipt-insights-layout">
             <section class="receipt-card receipt-top-card">
@@ -385,6 +388,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
     <script src="js/script.js?v=2"></script>
-    <script src="js/receipt-analytics.js?v=22"></script>
+    <script src="js/receipt-analytics.js?v=23"></script>
   </body>
 </html>

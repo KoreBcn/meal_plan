@@ -437,6 +437,75 @@ test('calendar groups shopping days and reveals only selected matching receipts'
   assert.equal(elements.get('receipt-date-card').hidden, true);
 });
 
+test('shopping date opens receipt dialog and closing restores the month', () => {
+  const elements = new Map();
+  const dateButton = {
+    dataset: { receiptDate: '2024-02-29' },
+    setAttribute(name, value) { this[name] = value; }
+  };
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, {
+          listeners: {},
+          classList: { toggle() {} },
+          setAttribute() {},
+          addEventListener(type, handler) { this.listeners[type] = handler; },
+          querySelectorAll: () => id === 'receipt-calendar' ? [dateButton] : [],
+          showModal() { this.open = true; },
+          close() { this.open = false; this.listeners.close(); }
+        });
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => ({}),
+      documentElement: { style: { setProperty() {} } }
+    },
+    ResizeObserver: class { observe() {} },
+    supabaseClient: {
+      auth: { onAuthStateChange() {}, getSession: () => new Promise(() => {}) }
+    }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source, context);
+  vm.runInContext(`
+    receiptAnalytics.year = '2024';
+    receiptAnalytics.month = '02';
+    receiptAnalytics.rows = [
+      {date:'2024-02-29',item_id:'1',item:'Milk',category:'Dairy',amount:'1',price:20,discount:2},
+      {date:'2024-02-01',item_id:'2',item:'Bread',category:'Bakery',amount:'1',price:10}
+    ];
+  `, context);
+  const dialog = elements.get('receipt-date-dialog');
+  const openDate = () => elements.get('receipt-calendar').listeners.click({
+    target: { closest: () => dateButton }
+  });
+  openDate();
+  assert.equal(dialog.open, true);
+  assert.equal(dateButton['aria-pressed'], 'true');
+  assert.match(elements.get('receipt-date-items').innerHTML, /Milk/);
+  assert.doesNotMatch(elements.get('receipt-date-items').innerHTML, /Bread/);
+  assert.match(elements.get('receipt-kpis').innerHTML, /29/);
+  elements.get('receipt-date-close').listeners.click();
+  assert.equal(dialog.open, false);
+  assert.equal(dateButton['aria-pressed'], 'false');
+  assert.equal(vm.runInContext('receiptAnalytics.selectedDate', context), null);
+  assert.match(elements.get('receipt-kpis').innerHTML, /Feb 2024/);
+  openDate();
+  dialog.listeners.click({ target: dialog });
+  assert.equal(dialog.open, false);
+  openDate();
+  let escapePrevented = false;
+  dialog.listeners.keydown({ key: 'Escape', preventDefault() { escapePrevented = true; } });
+  assert.equal(escapePrevented, true);
+  assert.equal(dialog.open, false);
+  assert.equal(vm.runInContext('receiptAnalytics.selectedDate', context), null);
+  openDate();
+  vm.runInContext("receiptAnalytics.itemSearch = 'missing'; renderReceiptCalendar(filteredReceiptRows())", context);
+  assert.equal(dialog.open, false);
+  assert.equal(vm.runInContext('receiptAnalytics.selectedDate', context), null);
+});
+
 test('top items paginate all results', () => {
   const elements = new Map();
   const context = vm.createContext({

@@ -54,6 +54,8 @@ class CategorizeReceiptTests(unittest.TestCase):
                 payload = json.loads(request.data)
                 self.assertEqual(payload["response_format"]["type"], "json_schema")
                 self.assertIn("Milk", payload["prompt"])
+                self.assertIn("at least 90% certain", payload["prompt"])
+                self.assertIn("If less than 90% certain, return null", payload["prompt"])
                 self.assertEqual(result, content["items"])
 
     def test_rejects_malformed_or_incomplete_predictions(self):
