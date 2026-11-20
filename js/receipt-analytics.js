@@ -1,4 +1,5 @@
 const receiptStatus = document.getElementById('receipt-status');
+const receiptAnalyticsToolbar = document.getElementById('receipt-analytics-toolbar');
 const receiptYearFilter = document.getElementById('receipt-year-filter');
 const receiptCategoryFilter = document.getElementById('receipt-category-filter');
 const receiptSupermarketFilter = document.getElementById('receipt-supermarket-filter');
@@ -23,6 +24,9 @@ const receiptCategorySummary = document.getElementById('receipt-category-summary
 const receiptSupermarketSummary = document.getElementById('receipt-supermarket-summary');
 const receiptShowCategories = document.getElementById('receipt-show-categories');
 const receiptShowSupermarkets = document.getElementById('receipt-show-supermarkets');
+const receiptBreakdownPrev = document.getElementById('receipt-breakdown-prev');
+const receiptBreakdownNext = document.getElementById('receipt-breakdown-next');
+const receiptBreakdownLabel = document.getElementById('receipt-breakdown-label');
 const receiptAllItems = document.getElementById('receipt-all-items');
 const receiptPagePrev = document.getElementById('receipt-page-prev');
 const receiptPageNext = document.getElementById('receipt-page-next');
@@ -47,6 +51,8 @@ const receiptAnalytics = {
   mappingPage: 0,
   reviewOnly: false,
   topPage: 0,
+  breakdownView: 'category',
+  breakdownPages: { category: 0, supermarket: 0 },
   insightCategories: null,
   insightSupermarkets: null,
   userId: null,
@@ -75,25 +81,6 @@ const receiptValidCategories = [
   'Sweets', 'Toppings', 'Vegan Protein', 'Vegetables'
 ];
 
-const receiptCategoryKeywords = {
-  Bakery: ['brød', 'rugbrød', 'boller', 'croissant'],
-  Canned: ['dåsetomat', 'dåsetomater'],
-  Cleaning: ['opvaskemiddel', 'vaskepulver', 'rengøringsmiddel'],
-  Coffee: ['kaffe', 'espresso'],
-  Dairy: ['mælk', 'yoghurt', 'yogurt', 'skyr', 'ost'],
-  Dressing: ['dressing', 'mayonnaise', 'mayo', 'ketchup', 'sennep'],
-  Drinks: ['øl', 'sodavand', 'juice', 'cola'],
-  Fruit: ['banan', 'bananer', 'æble', 'æbler', 'appelsin', 'appelsiner', 'pære', 'jordbær', 'blåbær'],
-  Grains: ['ris', 'havregryn', 'pasta', 'nudler'],
-  Legums: ['kikærter', 'linser', 'bønner'],
-  Nuts: ['nødder', 'mandler', 'cashewnødder', 'valnødder'],
-  Snacks: ['chips', 'popcorn'],
-  Spices: ['kanel', 'peber', 'oregano', 'karry', 'paprika'],
-  Sweets: ['chokolade', 'slik', 'vingummi'],
-  'Vegan Protein': ['tofu', 'tempeh', 'seitan'],
-  Vegetables: ['agurk', 'tomat', 'tomater', 'gulerod', 'gulerødder', 'løg', 'broccoli']
-};
-
 initReceiptAnalytics();
 
 function initReceiptAnalytics() {
@@ -106,6 +93,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.selectedDate = null;
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
+    receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
     receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
@@ -114,6 +102,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.category = receiptCategoryFilter.value;
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
+    receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
     receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
@@ -122,6 +111,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.supermarket = receiptSupermarketFilter.value;
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
+    receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
     receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
@@ -130,6 +120,7 @@ function initReceiptAnalytics() {
     receiptAnalytics.itemSearch = receiptItemSearch.value.trim().toLocaleLowerCase();
     receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
+    receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
     receiptAnalytics.insightSupermarkets = null;
     renderReceiptAnalytics();
@@ -145,6 +136,7 @@ function initReceiptAnalytics() {
     renderReceiptAnalytics();
   });
   const showReceiptBreakdown = (showSupermarkets) => {
+    receiptAnalytics.breakdownView = showSupermarkets ? 'supermarket' : 'category';
     receiptShowCategories.setAttribute('aria-pressed', String(!showSupermarkets));
     receiptShowSupermarkets.setAttribute('aria-pressed', String(showSupermarkets));
     receiptCategorySummary.hidden = showSupermarkets;
@@ -156,12 +148,22 @@ function initReceiptAnalytics() {
       receiptAnalytics.topPage = 0;
       const rows = filteredReceiptRows(false);
       renderTopReceiptItems(rows);
-      renderReceiptCategories(rows);
-      renderReceiptSupermarkets(rows);
     }
+    const rows = filteredReceiptRows(false);
+    renderReceiptCategories(rows);
+    renderReceiptSupermarkets(rows);
   };
   receiptShowCategories.addEventListener('click', () => showReceiptBreakdown(false));
   receiptShowSupermarkets.addEventListener('click', () => showReceiptBreakdown(true));
+  const changeBreakdownPage = (delta) => {
+    const view = receiptAnalytics.breakdownView;
+    receiptAnalytics.breakdownPages[view] += delta;
+    const rows = filteredReceiptRows(false);
+    if (view === 'category') renderReceiptCategories(rows);
+    else renderReceiptSupermarkets(rows);
+  };
+  receiptBreakdownPrev.addEventListener('click', () => changeBreakdownPage(-1));
+  receiptBreakdownNext.addEventListener('click', () => changeBreakdownPage(1));
   [
     [receiptCategorySummary, 'categories', 'insightCategories'],
     [receiptSupermarketSummary, 'supermarkets', 'insightSupermarkets']
@@ -263,7 +265,6 @@ function initReceiptAnalytics() {
     }));
   });
   receiptAllItems.addEventListener('change', handleCategoryEdit);
-  receiptAllItems.addEventListener('click', handleCategorySuggestion);
   receiptTopItems.addEventListener('click', handlePriceTrendClick);
   receiptPriceTrendClose.addEventListener('click', () => receiptPriceTrendDialog.close());
   receiptPriceTrendDialog.addEventListener('click', (event) => {
@@ -391,6 +392,8 @@ async function loadAllReceiptRows(queryFactory) {
 
 function activateReceiptTab(name) {
   receiptReviewOnly.hidden = name !== 'all-items';
+  receiptYearFilter.hidden = name === 'all-items';
+  receiptAnalyticsToolbar.classList.toggle('receipt-mappings-toolbar', name === 'all-items');
   receiptTabs.forEach((tab) => {
     const active = tab.dataset.receiptTab === name;
     tab.classList.toggle('active', active);
@@ -404,10 +407,10 @@ function activateReceiptTab(name) {
   });
 }
 
-function filteredReceiptRows(includeMonth = true) {
+function filteredReceiptRows(includeMonth = true, includeYear = true) {
   return receiptAnalytics.rows.filter((row) => {
     const category = normalizeCategory(row.category);
-    return row.date.slice(0, 4) === receiptAnalytics.year
+    return (!includeYear || row.date.slice(0, 4) === receiptAnalytics.year)
       && (!includeMonth || !receiptAnalytics.month || row.date.slice(5, 7) === receiptAnalytics.month)
       && (!receiptAnalytics.category || category === receiptAnalytics.category)
       && (!receiptAnalytics.supermarket || (row.supermarket?.trim() || 'Unknown') === receiptAnalytics.supermarket)
@@ -462,41 +465,6 @@ function updateReceiptUncategorizedAlert() {
   receiptUncategorizedAlert.textContent = count
     ? `${count.toLocaleString()} item${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} a category. Assign ${count === 1 ? 'it' : 'them'} in the Mappings tab.`
     : '';
-}
-
-function receiptNameTokens(name) {
-  return new Set((name.normalize('NFKC').toLocaleLowerCase('da-DK').match(/[\p{L}\p{N}]+/gu) || [])
-    .filter((token) => !/^\d+(?:g|kg|ml|l|stk|pk)?$/u.test(token)
-      && !['g', 'kg', 'ml', 'l', 'stk', 'pk'].includes(token)));
-}
-
-function suggestReceiptCategory(item, items) {
-  if (normalizeCategory(item.category) !== 'Uncategorized') return null;
-  const tokens = receiptNameTokens(item.name);
-  const matches = Object.entries(receiptCategoryKeywords).flatMap(([category, keywords]) =>
-    keywords.filter((keyword) => tokens.has(keyword)).map((keyword) => ({ category, keyword }))
-  );
-  const categories = new Set(matches.map((match) => match.category));
-  if (categories.size > 1) return null;
-  if (matches.length) return { category: matches[0].category, reason: `Keyword: ${matches[0].keyword}` };
-
-  let best = null;
-  let conflicting = false;
-  items.forEach((candidate) => {
-    if (candidate.id === item.id || !receiptValidCategories.includes(candidate.category) || candidate.category === 'Other') return;
-    const candidateTokens = receiptNameTokens(candidate.name);
-    const shared = [...tokens].filter((token) => candidateTokens.has(token)).length;
-    const union = new Set([...tokens, ...candidateTokens]).size;
-    if (shared < 2 || shared / union < 0.75) return;
-    const score = shared / union;
-    if (!best || score > best.score) {
-      best = { category: candidate.category, reason: `Similar to ${candidate.name}`, score };
-      conflicting = false;
-    } else if (score === best.score && candidate.category !== best.category) {
-      conflicting = true;
-    }
-  });
-  return conflicting ? null : best;
 }
 
 function normalizeCategory(category) {
@@ -663,29 +631,31 @@ function renderReceiptSupermarkets(rows) {
 
 function renderReceiptBars(entries, label) {
   const total = entries.reduce((sum, entry) => sum + entry.spend, 0);
-  if (!entries.length || total <= 0 || entries.some((entry) => entry.spend < 0)) {
+  const valid = entries.length && total > 0 && !entries.some((entry) => entry.spend < 0);
+  const pageSize = 10;
+  const pageCount = valid ? Math.ceil(entries.length / pageSize) : 1;
+  const page = Math.max(0, Math.min(receiptAnalytics.breakdownPages[label], pageCount - 1));
+  receiptAnalytics.breakdownPages[label] = page;
+  if (receiptAnalytics.breakdownView === label) {
+    receiptBreakdownPrev.disabled = page === 0;
+    receiptBreakdownNext.disabled = page === pageCount - 1;
+    receiptBreakdownLabel.textContent = `Page ${page + 1} of ${pageCount}`;
+  }
+  if (!valid) {
     return `<p class="receipt-empty">No positive ${label} totals available for a bar chart.</p>`;
   }
   const sorted = [...entries].sort((left, right) =>
     right.spend - left.spend || left.name.localeCompare(right.name)
   );
-  const shown = sorted.slice(0, 10).map((entry) => ({ ...entry, values: [entry.name] }));
-  const remaining = sorted.slice(10);
-  if (remaining.length) {
-    shown.push({
-      name: 'Other',
-      spend: remaining.reduce((sum, entry) => sum + entry.spend, 0),
-      values: remaining.map((entry) => entry.name),
-      ...(label === 'supermarket' ? { discount: remaining.reduce((sum, entry) => sum + entry.discount, 0) } : {})
-    });
-  }
-  const max = Math.max(...shown.map((entry) => entry.spend));
-  const bars = shown.map((entry, index) => {
-    const name = remaining.length && index < 10 && entry.name === 'Other' ? `Other (${label})` : entry.name;
+  const shown = sorted.slice(page * pageSize, (page + 1) * pageSize);
+  const max = sorted[0].spend;
+  const bars = shown.map((entry) => {
+    const name = entry.name;
     const detail = `${name}: ${receiptChartMoney.format(entry.spend)}${entry.discount == null ? '' : `; discounts: ${receiptChartMoney.format(entry.discount)}`} (${Math.round(entry.spend / total * 100)}%)`;
     const kind = label === 'category' ? 'categories' : 'supermarkets';
     const selection = label === 'category' ? receiptAnalytics.insightCategories : receiptAnalytics.insightSupermarkets;
-    const selectionAttributes = ` data-bar-${kind}="${escapeReceiptHtml(JSON.stringify(entry.values))}" aria-pressed="${JSON.stringify(selection) === JSON.stringify(entry.values)}"`;
+    const values = [entry.name];
+    const selectionAttributes = ` data-bar-${kind}="${escapeReceiptHtml(JSON.stringify(values))}" aria-pressed="${JSON.stringify(selection) === JSON.stringify(values)}"`;
     return `<button type="button" class="receipt-bar" data-bar-detail="${escapeReceiptHtml(detail)}"${selectionAttributes} aria-label="${escapeReceiptHtml(detail)}" title="${escapeReceiptHtml(detail)}"><span class="receipt-bar-fill" style="width: ${entry.spend / max * 100}%"></span><span class="receipt-bar-label">${escapeReceiptHtml(name)}</span><span class="receipt-bar-amount">${receiptChartMoney.format(entry.spend)}</span></button>`;
   }).join('');
   return `
@@ -782,7 +752,7 @@ function renderReceiptCategories(rows) {
 }
 
 function renderAllReceiptItems() {
-  const aggregates = new Map(aggregateReceiptItems(filteredReceiptRows())
+  const aggregates = new Map(aggregateReceiptItems(filteredReceiptRows(true, false))
     .map((item) => [item.itemId, item]));
   const items = receiptAnalytics.items.filter((item) => {
     const category = normalizeCategory(item.category);
@@ -805,7 +775,6 @@ function renderAllReceiptItems() {
     ? items.slice(receiptAnalytics.mappingPage * pageSize, (receiptAnalytics.mappingPage + 1) * pageSize).map((item) => {
       const aggregate = aggregates.get(item.id);
       const category = normalizeCategory(item.category);
-      const suggestion = suggestReceiptCategory(item, receiptAnalytics.items);
       return `
         <tr>
           <td data-label="Item">${escapeReceiptHtml(item.name)}${category === 'Uncategorized' ? '<span class="receipt-uncategorized-badge">Needs category</span>' : ''}</td>
@@ -815,7 +784,6 @@ function renderAllReceiptItems() {
             <div class="receipt-item-category-control">
               <input type="text" list="receipt-category-suggestions" value="${category === 'Uncategorized' ? '' : escapeReceiptHtml(category)}" placeholder="Uncategorized" data-category-item="${escapeReceiptHtml(item.id)}" aria-label="Category for ${escapeReceiptHtml(item.name)}" />
             </div>
-            ${suggestion ? `<div class="receipt-category-recommendation"><span>Suggested: <strong>${escapeReceiptHtml(suggestion.category)}</strong> <small>(${escapeReceiptHtml(suggestion.reason)})</small></span><button type="button" class="secondary" data-accept-category="${escapeReceiptHtml(item.id)}" aria-label="Apply ${escapeReceiptHtml(suggestion.category)} to ${escapeReceiptHtml(item.name)}">Apply</button></div>` : ''}
           </td>
         </tr>
       `;
@@ -904,47 +872,17 @@ async function handleCategoryEdit(event) {
   }
   const itemId = input.dataset.categoryItem;
   const category = input.value.trim() || null;
-  await saveReceiptCategory(itemId, category, input.getAttribute('aria-label').replace(/^Category for /, ''), false);
+  await saveReceiptCategory(itemId, category, input.getAttribute('aria-label').replace(/^Category for /, ''));
 }
 
-async function handleCategorySuggestion(event) {
-  const button = event.target.closest('[data-accept-category]');
-  if (!button) return;
-  const item = receiptAnalytics.items.find((candidate) => candidate.id === button.dataset.acceptCategory);
-  if (!item) {
-    setReceiptStatus('Could not find the selected receipt item.', true);
-    return;
-  }
-  const suggestion = suggestReceiptCategory(item, receiptAnalytics.items);
-  if (!suggestion) {
-    setReceiptStatus('This item no longer has a category suggestion. Refresh the list and review it.', true);
-    return;
-  }
-  button.disabled = true;
-  await saveReceiptCategory(item.id, suggestion.category, item.name, true);
-  button.disabled = false;
-}
-
-async function saveReceiptCategory(itemId, category, itemName, onlyUncategorized) {
+async function saveReceiptCategory(itemId, category, itemName) {
   try {
-    let query = supabaseClient
+    const { error } = await supabaseClient
       .from('receipt_item_dimension')
       .update({ category })
       .eq('id', itemId);
-    if (onlyUncategorized) {
-      const item = receiptAnalytics.items.find((candidate) => candidate.id === itemId);
-      if (!item || normalizeCategory(item.category) !== 'Uncategorized') {
-        throw new Error('This item is already categorized. Refresh the list before reviewing it.');
-      }
-      query = item.category == null ? query.is('category', null) : query.eq('category', item.category);
-      query = query.select('id').maybeSingle();
-    }
-    const { data, error } = await query;
     if (error) {
       throw error;
-    }
-    if (onlyUncategorized && !data) {
-      throw new Error('This item was changed elsewhere. Refresh the page before reviewing it.');
     }
     const item = receiptAnalytics.items.find((candidate) => candidate.id === itemId);
     if (item) {

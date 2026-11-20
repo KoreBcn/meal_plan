@@ -2882,20 +2882,6 @@ body[data-theme="dark"] .weekly-chart-count {
   display: none;
 }
 
-.receipt-category-recommendation {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.receipt-category-recommendation button {
-  padding: 5px 9px;
-}
-
 .receipt-price-trend-button {
   display: inline-grid;
   width: 36px;
@@ -3149,6 +3135,12 @@ body[data-theme="dark"] .shopping-item-check input:checked {
 
 .receipt-analytics-toolbar {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (min-width: 641px) {
+  .receipt-analytics-toolbar.receipt-mappings-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .receipt-tab-bar {
@@ -3504,7 +3496,7 @@ body[data-theme="dark"] .shopping-item-check input:checked {
   gap: 12px;
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  min-height: 52px;
   padding: 8px 10px;
   border: 0;
   border-radius: 4px;

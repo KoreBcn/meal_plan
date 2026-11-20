@@ -170,11 +170,13 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.match(elements.get('receipt-supermarket-summary').innerHTML, /Other/);
   vm.runInContext("activateReceiptTab('all-items')", context);
   assert.equal(elements.get('receipt-review-only').hidden, false);
+  assert.equal(elements.get('receipt-year-filter').hidden, true);
   elements.get('receipt-review-only').listeners.click();
   assert.equal(elements.get('receipt-review-only')['aria-pressed'], 'true');
   assert.equal(elements.get('receipt-review-only').title, 'Show all items');
   vm.runInContext("activateReceiptTab('insights')", context);
   assert.equal(elements.get('receipt-review-only').hidden, true);
+  assert.equal(elements.get('receipt-year-filter').hidden, false);
   assert.equal(vm.runInContext('receiptAnalytics.reviewOnly', context), true);
   vm.runInContext("activateReceiptTab('all-items')", context);
   assert.equal(elements.get('receipt-review-only').hidden, false);
@@ -250,9 +252,14 @@ test('insights ignores spending selections but respects filter pane and paginati
     }));
     renderReceiptCategories(receiptAnalytics.rows);
   `, context);
-  assert.match(categoryChart.innerHTML, /data-bar-categories="\[&quot;Category 10&quot;,&quot;Category 11&quot;\]"/);
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 1 of 2');
+  assert.equal(elements.get('receipt-breakdown-prev').disabled, true);
+  elements.get('receipt-breakdown-next').listeners.click();
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 2 of 2');
+  assert.equal(elements.get('receipt-breakdown-next').disabled, true);
+  assert.match(categoryChart.innerHTML, /data-bar-categories="\[&quot;Category 10&quot;\]"/);
   const otherBar = {
-    dataset: { barCategories: JSON.stringify(['Category 10', 'Category 11']) },
+    dataset: { barCategories: JSON.stringify(['Category 10']) },
     setAttribute(name, value) { this[name] = value; }
   };
   categoryChart.querySelectorAll = () => [otherBar];
@@ -260,11 +267,18 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.equal(otherBar['aria-pressed'], 'true');
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 1');
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 10/);
-  assert.match(elements.get('receipt-top-items').innerHTML, /Item 11/);
+  assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Item 11/);
   assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Item 9/);
+  elements.get('receipt-breakdown-prev').listeners.click();
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 1 of 2');
+  assert.match(elements.get('receipt-top-items').innerHTML, /Item 10/);
+  elements.get('receipt-breakdown-next').listeners.click();
+  assert.match(categoryChart.innerHTML, /data-bar-categories="\[&quot;Category 10&quot;\]" aria-pressed="true"/);
   elements.get('receipt-item-search').value = 'Item 0';
   elements.get('receipt-item-search').listeners.input();
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 0/);
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 1 of 1');
+  assert.equal(elements.get('receipt-breakdown-next').disabled, true);
 
   vm.runInContext(`
     receiptAnalytics.itemSearch = '';
@@ -280,16 +294,19 @@ test('insights ignores spending selections but respects filter pane and paginati
   `, context);
   supermarketButton.listeners.click();
   const supermarketChart = elements.get('receipt-supermarket-summary');
-  assert.match(supermarketChart.innerHTML, /data-bar-supermarkets="\[&quot;Shop 10&quot;,&quot;Shop 11&quot;,&quot;Unknown&quot;\]"/);
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 1 of 2');
+  elements.get('receipt-breakdown-next').listeners.click();
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 2 of 2');
+  assert.match(supermarketChart.innerHTML, /data-bar-supermarkets="\[&quot;Unknown&quot;\]"/);
   const otherSupermarkets = {
-    dataset: { barSupermarkets: JSON.stringify(['Shop 10', 'Shop 11', 'Unknown']) },
+    dataset: { barSupermarkets: JSON.stringify(['Unknown']) },
     setAttribute(name, value) { this[name] = value; }
   };
   supermarketChart.querySelectorAll = () => [otherSupermarkets];
   supermarketChart.listeners.click({ target: { closest: () => otherSupermarkets } });
   assert.equal(otherSupermarkets['aria-pressed'], 'true');
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 1');
-  assert.match(elements.get('receipt-top-items').innerHTML, /Item 10/);
+  assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Item 10/);
   assert.match(elements.get('receipt-top-items').innerHTML, /Unknown A/);
   assert.match(elements.get('receipt-top-items').innerHTML, /Unknown B/);
   assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Item 9/);
@@ -299,11 +316,57 @@ test('insights ignores spending selections but respects filter pane and paginati
   supermarketChart.listeners.click({ target: { closest: () => otherSupermarkets } });
   categoryButton.listeners.click();
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 1 of 1');
   supermarketButton.listeners.click();
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 2 of 2');
   supermarketChart.listeners.click({ target: { closest: () => otherSupermarkets } });
   elements.get('receipt-item-search').value = 'Item 0';
   elements.get('receipt-item-search').listeners.input();
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 0/);
+});
+
+test('mapping totals and supermarket filtering ignore year but retain other filters', () => {
+  const elements = new Map();
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { classList: { toggle() {} } });
+        return elements.get(id);
+      },
+      querySelectorAll: () => []
+    }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source.replace('initReceiptAnalytics();', ''), context);
+  vm.runInContext(`
+    receiptAnalytics.year = '2024';
+    receiptAnalytics.month = '01';
+    receiptAnalytics.items = [
+      {id:'1',name:'Milk',category:'Dairy'},
+      {id:'2',name:'Bread',category:'Bakery'}
+    ];
+    receiptAnalytics.rows = [
+      {date:'2023-01-01',item_id:'1',item:'Milk',category:'Dairy',supermarket:'Netto',amount:'1',price:10},
+      {date:'2024-01-01',item_id:'1',item:'Milk',category:'Dairy',supermarket:'Netto',amount:'1',price:20},
+      {date:'2023-02-01',item_id:'1',item:'Milk',category:'Dairy',supermarket:'Netto',amount:'1',price:50},
+      {date:'2023-01-01',item_id:'2',item:'Bread',category:'Bakery',supermarket:'Other',amount:'1',price:5}
+    ];
+    receiptAnalytics.supermarket = 'Netto';
+    renderAllReceiptItems();
+  `, context);
+  let html = elements.get('receipt-all-items').innerHTML;
+  const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
+  assert.match(html, /data-label="Purchases">2</);
+  assert.ok(html.includes(`<td data-label="Total spend">${money.format(30)}</td>`));
+  assert.doesNotMatch(html, /Bread/);
+  vm.runInContext("receiptAnalytics.year = '2023'; renderAllReceiptItems()", context);
+  assert.equal(elements.get('receipt-all-items').innerHTML, html);
+  vm.runInContext("receiptAnalytics.itemSearch = 'bread'; renderAllReceiptItems()", context);
+  assert.match(elements.get('receipt-all-items').innerHTML, /No items match/);
+  vm.runInContext("receiptAnalytics.supermarket = ''; renderAllReceiptItems()", context);
+  html = elements.get('receipt-all-items').innerHTML;
+  assert.match(html, /Bread/);
+  assert.match(html, /data-label="Purchases">1</);
 });
 
 test('calendar groups shopping days and reveals only selected matching receipts', () => {
@@ -381,7 +444,7 @@ test('top items paginate all results', () => {
   assert.match(elements.get('receipt-top-items').innerHTML, /--receipt-item-bar: 0%/);
 });
 
-test('bar charts rank the top 10 and group the rest without losing totals', () => {
+test('bar charts paginate all categories and supermarkets with a consistent scale', () => {
   const elements = new Map();
   const context = vm.createContext({
     document: {
@@ -404,61 +467,40 @@ test('bar charts rank the top 10 and group the rest without losing totals', () =
   const chart = elements.get('receipt-category-summary').innerHTML;
   const supermarkets = elements.get('receipt-supermarket-summary').innerHTML;
   const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
-  assert.equal((chart.match(/class="receipt-bar"/g) || []).length, 11);
-  assert.equal((supermarkets.match(/class="receipt-bar"/g) || []).length, 11);
+  assert.equal((chart.match(/class="receipt-bar"/g) || []).length, 10);
+  assert.equal((supermarkets.match(/class="receipt-bar"/g) || []).length, 10);
   assert.ok(chart.includes(`<span class="receipt-bar-label">Category 0</span><span class="receipt-bar-amount">${money.format(12)}</span>`));
   assert.match(chart, /class="receipt-bar-fill" style="width: 100%"/);
   assert.ok(chart.indexOf('Category 0:') < chart.indexOf('Category 9:'));
   assert.doesNotMatch(chart, /Category 10:|Category 11:/);
-  assert.ok(chart.includes(`Other: ${money.format(3)}`));
-  assert.ok(supermarkets.includes(`Other: ${money.format(3)}; discounts: ${money.format(3)}`));
+  assert.doesNotMatch(chart, /Other:/);
+  vm.runInContext(`
+    receiptAnalytics.breakdownPages.category = 1;
+    receiptAnalytics.breakdownPages.supermarket = 1;
+    renderReceiptCategories(rows);
+    renderReceiptSupermarkets(rows);
+  `, context);
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 2 of 2');
+  assert.equal((elements.get('receipt-category-summary').innerHTML.match(/class="receipt-bar"/g) || []).length, 2);
+  assert.ok(elements.get('receipt-category-summary').innerHTML.includes(`Category 10: ${money.format(2)}`));
+  assert.match(elements.get('receipt-category-summary').innerHTML, /width: 16\.666666666666664%/);
+  assert.ok(elements.get('receipt-supermarket-summary').innerHTML.includes(`Shop 11: ${money.format(1)}; discounts: ${money.format(1)}`));
 
   vm.runInContext("renderReceiptCategories([{category:'Food',price:98},{category:'Small',price:2}])", context);
+  assert.equal(elements.get('receipt-breakdown-label').textContent, 'Page 1 of 1');
   const smallChart = elements.get('receipt-category-summary').innerHTML;
   assert.match(smallChart, /Small:/);
   assert.doesNotMatch(smallChart, /Other:/);
   vm.runInContext("renderReceiptCategories([{category:'Other',price:100}, ...rows])", context);
   const otherChart = elements.get('receipt-category-summary').innerHTML;
-  assert.ok(otherChart.includes(`Other (category): ${money.format(100)}`));
-  assert.ok(otherChart.includes(`Other: ${money.format(6)}`));
+  assert.ok(otherChart.includes(`Other: ${money.format(100)}`));
   vm.runInContext("renderReceiptCategories([{category:'Food',price:10},{category:'Refund',price:-1}])", context);
   assert.match(elements.get('receipt-category-summary').innerHTML, /No positive category totals/);
 });
 
-test('category suggestions use valid rules and unambiguous similar products', () => {
-  const context = vm.createContext({
-    document: {
-      getElementById: () => ({}),
-      querySelectorAll: () => []
-    }
-  });
-  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
-  vm.runInContext(source.replace('initReceiptAnalytics();', ''), context);
-  assert.equal(vm.runInContext("suggestReceiptCategory({id:'1',name:'BANANER, LØSE',category:null}, []).category", context), 'Fruit');
-  assert.equal(vm.runInContext("suggestReceiptCategory({id:'1',name:'TOFU 500G',category:null}, []).category", context), 'Vegan Protein');
-  assert.equal(vm.runInContext("suggestReceiptCategory({id:'1',name:'BLÅBÆR SKYR',category:null}, [])", context), null);
-  assert.equal(vm.runInContext("suggestReceiptCategory({id:'1',name:'Mystery',category:null}, [])", context), null);
-  assert.equal(vm.runInContext("suggestReceiptCategory({id:'1',name:'BANANER',category:'Dairy'}, [])", context), null);
-  assert.equal(vm.runInContext(`
-    suggestReceiptCategory({id:'1',name:'NORDIC SPECIAL 500G',category:null},
-      [{id:'2',name:'NORDIC SPECIAL 750G',category:'Coffee'}]).category
-  `, context), 'Coffee');
-  assert.equal(vm.runInContext(`
-    suggestReceiptCategory({id:'1',name:'NORDIC SPECIAL 500G',category:null}, [
-      {id:'2',name:'NORDIC SPECIAL 750G',category:'Coffee'},
-      {id:'3',name:'NORDIC SPECIAL 1KG',category:'Drinks'}
-    ])
-  `, context), null);
-  assert.equal(vm.runInContext(`
-    suggestReceiptCategory({id:'1',name:'NORDIC SPECIAL 500G',category:null},
-      [{id:'2',name:'NORDIC SPECIAL 750G',category:'Pantry'}])
-  `, context), null);
-});
-
-test('category suggestions require approval and preserve concurrent mappings', async () => {
+test('mappings allow manual edits without local category recommendations', async () => {
   const elements = new Map();
   const calls = [];
-  let updated = { id: '1' };
   const context = vm.createContext({
     document: {
       getElementById(id) {
@@ -472,10 +514,7 @@ test('category suggestions require approval and preserve concurrent mappings', a
         calls.push(['from', table]);
         const query = {
           update(values) { calls.push(['update', values.category]); return this; },
-          eq(key, value) { calls.push(['eq', key, value]); return this; },
-          is(key, value) { calls.push(['is', key, value]); return this; },
-          select(columns) { calls.push(['select', columns]); return this; },
-          maybeSingle() { return Promise.resolve({ data: updated, error: null }); }
+          eq(key, value) { calls.push(['eq', key, value]); return Promise.resolve({ error: null }); }
         };
         return query;
       }
@@ -493,22 +532,17 @@ test('category suggestions require approval and preserve concurrent mappings', a
     renderAllReceiptItems();
   `, context);
   assert.equal(calls.length, 0);
-  assert.match(elements.get('receipt-all-items').innerHTML, /Suggested: <strong>Fruit<\/strong>/);
-  await vm.runInContext(`handleCategorySuggestion({
-    target: {closest: () => ({dataset: {acceptCategory:'1'}, disabled:false})}
+  assert.doesNotMatch(elements.get('receipt-all-items').innerHTML, /Suggested:|data-accept-category/);
+  assert.match(elements.get('receipt-all-items').innerHTML, /list="receipt-category-suggestions"/);
+  await vm.runInContext(`handleCategoryEdit({
+    target: {closest: () => ({dataset: {categoryItem:'1'}, value:'Fruit', getAttribute: () => 'Category for BANANER'})}
   })`, context);
-  assert.ok(calls.some((call) => call[0] === 'is' && call[1] === 'category' && call[2] === null));
+  assert.ok(calls.some((call) => call[0] === 'update' && call[1] === 'Fruit'));
+  assert.ok(calls.some((call) => call[0] === 'eq' && call[1] === 'id' && call[2] === '1'));
   assert.equal(vm.runInContext("receiptAnalytics.items[0].category", context), 'Fruit');
   assert.equal(vm.runInContext("receiptAnalytics.rows[0].category", context), 'Fruit');
 
   vm.runInContext("receiptAnalytics.items[0].category = null; receiptAnalytics.rows[0].category = ''", context);
-  updated = null;
-  await vm.runInContext(`handleCategorySuggestion({
-    target: {closest: () => ({dataset: {acceptCategory:'1'}, disabled:false})}
-  })`, context);
-  assert.equal(vm.runInContext("receiptAnalytics.items[0].category", context), null);
-  assert.match(elements.get('receipt-status').textContent, /changed elsewhere/);
-
   vm.runInContext("receiptAnalytics.reviewOnly = true; renderAllReceiptItems()", context);
   assert.match(elements.get('receipt-all-items').innerHTML, /BANANER/);
   assert.doesNotMatch(elements.get('receipt-all-items').innerHTML, /YOGHURT/);
