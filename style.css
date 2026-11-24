@@ -2974,10 +2974,9 @@ body[data-theme="dark"] .weekly-chart-count {
   table-layout: fixed;
 }
 
-.receipt-date-table col:nth-child(1) { width: 35%; }
-.receipt-date-table col:nth-child(2) { width: 19%; }
-.receipt-date-table col:nth-child(3) { width: 24%; }
-.receipt-date-table col:nth-child(4) { width: 22%; }
+.receipt-date-table col:nth-child(1) { width: 50%; }
+.receipt-date-table col:nth-child(2) { width: 22%; }
+.receipt-date-table col:nth-child(3) { width: 28%; }
 
 .receipt-card .receipt-date-table th,
 .receipt-card .receipt-date-table td {
@@ -2993,27 +2992,56 @@ body[data-theme="dark"] .weekly-chart-count {
   text-align: right;
 }
 
+.receipt-date-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.receipt-date-sort:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.receipt-date-sort span {
+  font-size: 0.7em;
+}
+
+.receipt-card .receipt-date-table .receipt-date-discounted-item td {
+  padding-bottom: 2px;
+  border-bottom: 0;
+}
+
+.receipt-card .receipt-date-table .receipt-date-discount td {
+  padding-top: 2px;
+  color: var(--muted);
+}
+
 .receipt-date-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 8px;
+  right: 8px;
   display: grid;
   width: 36px;
   height: 36px;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 8px;
   background: transparent;
-  color: var(--danger);
+  color: white;
 }
 
 .receipt-date-close:hover {
-  background: var(--panel-alt);
+  opacity: 0.8;
 }
 
 .receipt-date-close:focus-visible {
-  outline: 3px solid var(--danger);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -3024,6 +3052,7 @@ body[data-theme="dark"] .weekly-chart-count {
   stroke: currentColor;
   stroke-linecap: round;
   stroke-width: 1.8;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
 }
 
 .receipt-price-trend-dialog .receipt-card-heading {
@@ -3270,8 +3299,8 @@ body[data-theme="dark"] .receipt-filters-toggle {
   stroke-width: 1.8;
 }
 
-.receipt-filters-toggle[aria-expanded="true"] .receipt-filters-slash {
-  display: none;
+.receipt-filters-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
 }
 
 .receipt-filters-toggle:focus-visible {
@@ -3588,16 +3617,11 @@ body[data-theme="dark"] .receipt-filters-toggle {
   outline-offset: 2px;
 }
 
-.receipt-calendar-details,
 .receipt-bar-detail {
   min-height: 2.5em;
   margin: 12px 0 0;
   color: var(--muted);
   font-size: 0.82rem;
-}
-
-.receipt-calendar-details {
-  margin-top: 8px;
 }
 
 .receipt-insights-layout {
@@ -3707,6 +3731,8 @@ body[data-theme="dark"] .receipt-filters-toggle {
     width: 34px;
     height: 34px;
     min-height: 34px;
+    margin-left: auto;
+    margin-right: 8px;
     place-items: center;
     padding: 8px;
   }
@@ -3722,7 +3748,7 @@ body[data-theme="dark"] .receipt-filters-toggle {
 
   #receipt-panel-spending.active {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 0.7fr) minmax(0, 1.3fr);
     min-height: 80vh;
     min-height: 80svh;
   }
@@ -3730,6 +3756,14 @@ body[data-theme="dark"] .receipt-filters-toggle {
   #receipt-panel-spending > .receipt-summary,
   #receipt-panel-spending > .receipt-calendar-card {
     grid-column: 1;
+  }
+
+  .receipt-monthly-chart {
+    min-height: 133px;
+  }
+
+  .receipt-month-column {
+    grid-template-rows: 64px minmax(40px, 1fr) 16px;
   }
 
   .receipt-calendar {

@@ -231,6 +231,7 @@ const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.querySelector('.sidebar');
 const appShell = document.querySelector('.app-shell');
 const appStatus = document.getElementById('app-status');
+const realtimeStatus = document.getElementById('realtime-status');
 const signedInUser = document.getElementById('signed-in-user');
 const signOutButton = document.getElementById('sign-out');
 const navButtons = document.querySelectorAll('.nav-btn');
@@ -353,8 +354,9 @@ async function init() {
 async function handleAuthSession(session) {
   if (!session) {
     if (realtimeChannel) {
-      supabaseClient.removeChannel(realtimeChannel);
+      const oldChannel = realtimeChannel;
       realtimeChannel = null;
+      supabaseClient.removeChannel(oldChannel);
     }
     window.clearTimeout(sharedRefreshTimer);
     currentUserId = null;
@@ -371,6 +373,8 @@ async function handleAuthSession(session) {
     appShell.hidden = true;
     authPanel.hidden = false;
     clearMessage(appStatus);
+    clearMessage(realtimeStatus);
+    realtimeStatus.hidden = true;
     return;
   }
 
@@ -379,9 +383,12 @@ async function handleAuthSession(session) {
   }
 
   if (realtimeChannel) {
-    supabaseClient.removeChannel(realtimeChannel);
+    const oldChannel = realtimeChannel;
     realtimeChannel = null;
+    supabaseClient.removeChannel(oldChannel);
   }
+  clearMessage(realtimeStatus);
+  realtimeStatus.hidden = true;
   window.clearTimeout(sharedRefreshTimer);
   currentUserId = session.user.id;
   sharedOwnerId = null;
@@ -1775,10 +1782,12 @@ function getCategoryIcon(category) {
 
 function subscribeToSharedUpdates() {
   if (realtimeChannel) {
-    supabaseClient.removeChannel(realtimeChannel);
+    const oldChannel = realtimeChannel;
+    realtimeChannel = null;
+    supabaseClient.removeChannel(oldChannel);
   }
 
-  realtimeChannel = supabaseClient
+  const channel = supabaseClient
     .channel('shared-meal-plan')
     .on('postgres_changes', {
       event: '*',
@@ -1796,8 +1805,9 @@ function subscribeToSharedUpdates() {
       }
       renderShoppingList();
     });
+  realtimeChannel = channel;
 
-  realtimeChannel.on('postgres_changes', {
+  channel.on('postgres_changes', {
     event: '*',
     schema: 'public',
     table: 'shopping_items'
@@ -1823,16 +1833,28 @@ function subscribeToSharedUpdates() {
   });
 
   ['ingredients', 'dishes', 'dish_ingredients', 'meal_plan', 'meal_plan_ingredient_exclusions'].forEach((table) => {
-    realtimeChannel.on('postgres_changes', {
+    channel.on('postgres_changes', {
       event: '*',
       schema: 'public',
       table
     }, scheduleSharedStateRefresh);
   });
 
-  realtimeChannel.subscribe((status, error) => {
-    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      showMessage(appStatus, error?.message || 'Live updates are unavailable. Reload the page to reconnect.', true);
+  let subscribed = false;
+  let disconnected = false;
+  channel.subscribe((status, error) => {
+    if (realtimeChannel !== channel) return;
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      disconnected = true;
+      console.error('Shared meal plan live updates unavailable:', status, error);
+      showMessage(realtimeStatus, 'Live updates are unavailable. Reload the page if they do not reconnect.', true);
+      realtimeStatus.hidden = false;
+    } else if (status === 'SUBSCRIBED') {
+      if (subscribed || disconnected) scheduleSharedStateRefresh();
+      subscribed = true;
+      disconnected = false;
+      clearMessage(realtimeStatus);
+      realtimeStatus.hidden = true;
     }
   });
 }

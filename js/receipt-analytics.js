@@ -11,7 +11,6 @@ const receiptSummary = document.getElementById('receipt-summary');
 const receiptKpis = document.getElementById('receipt-kpis');
 const receiptCalendar = document.getElementById('receipt-calendar');
 const receiptCalendarTitle = document.getElementById('receipt-calendar-title');
-const receiptCalendarDetails = document.getElementById('receipt-calendar-details');
 const receiptDateDialog = document.getElementById('receipt-date-dialog');
 const receiptDateClose = document.getElementById('receipt-date-close');
 const receiptDateCard = document.getElementById('receipt-date-card');
@@ -44,6 +43,7 @@ const receiptAnalytics = {
   rows: [],
   items: [],
   selectedDate: null,
+  receiptSort: { column: null, direction: 'ascending' },
   month: String(new Date().getMonth() + 1).padStart(2, '0'),
   year: String(new Date().getFullYear()),
   category: '',
@@ -245,6 +245,21 @@ function initReceiptAnalytics() {
     });
     if (!receiptDateDialog.open && !receiptDateCard.hidden) receiptDateDialog.showModal();
   });
+  receiptDateItems.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-receipt-sort]');
+    if (!button) return;
+    const column = button.dataset.receiptSort;
+    if (!['item', 'amount', 'price'].includes(column)) return;
+    const tableIndex = [...receiptDateItems.querySelectorAll('.receipt-date-table')]
+      .indexOf(button.closest('.receipt-date-table'));
+    const previous = receiptAnalytics.receiptSort;
+    receiptAnalytics.receiptSort = {
+      column,
+      direction: previous.column === column && previous.direction === 'ascending' ? 'descending' : 'ascending'
+    };
+    renderSpendingDetails();
+    receiptDateItems.querySelectorAll(`[data-receipt-sort="${column}"]`)[tableIndex]?.focus();
+  });
   receiptDateClose.addEventListener('click', () => receiptDateDialog.close());
   receiptDateDialog.addEventListener('close', () => {
     receiptAnalytics.selectedDate = null;
@@ -262,15 +277,6 @@ function initReceiptAnalytics() {
       receiptDateDialog.close();
     }
   });
-  ['mouseover', 'focusin'].forEach((type) => receiptCalendar.addEventListener(type, (event) => {
-    const day = event.target.closest('[data-receipt-details]');
-    if (day) receiptCalendarDetails.textContent = day.dataset.receiptDetails;
-  }));
-  ['mouseout', 'focusout'].forEach((type) => receiptCalendar.addEventListener(type, (event) => {
-    if (event.target.closest('[data-receipt-details]')) {
-      receiptCalendarDetails.textContent = 'Hover over or focus a shopping day for details.';
-    }
-  }));
   [receiptCategorySummary, receiptSupermarketSummary].forEach((chart) => {
     const help = chart === receiptCategorySummary
       ? 'Select a category to filter Top Items; select it again to clear.'
@@ -602,12 +608,30 @@ function renderReceiptCalendar(rows) {
     const level = maxSpend > 0 ? Math.max(1, Math.ceil(day.spend / maxSpend * 5)) : 1;
     const description = `${formatReceiptDate(date)}: ${receiptChartMoney.format(day.spend)} spent; ${[...day.places].join(', ')}; ${receiptChartMoney.format(day.savings)} saved`;
     return `
-      <button type="button" class="receipt-calendar-day receipt-calendar-shopping receipt-calendar-heat-${level}" data-receipt-date="${date}" data-receipt-details="${escapeReceiptHtml(description)}" title="${escapeReceiptHtml(description)}" aria-label="${escapeReceiptHtml(description)}" aria-pressed="${date === receiptAnalytics.selectedDate}">${number}</button>
+      <button type="button" class="receipt-calendar-day receipt-calendar-shopping receipt-calendar-heat-${level}" data-receipt-date="${date}" title="${escapeReceiptHtml(description)}" aria-label="${escapeReceiptHtml(description)}" aria-pressed="${date === receiptAnalytics.selectedDate}">${number}</button>
     `;
   }).join('');
   receiptCalendar.innerHTML = headings + blanks + days;
-  receiptCalendarDetails.textContent = 'Hover over or focus a shopping day for details.';
   renderSpendingDetails();
+}
+
+function parseReceiptAmount(value) {
+  const match = String(value).match(/^\s*(\d+(?:[.,]\d+)?)\s*(.*)$/);
+  return match ? { value: Number(match[1].replace(',', '.')), unit: match[2].trim() } : null;
+}
+
+function sortReceiptItems(items) {
+  const { column, direction } = receiptAnalytics.receiptSort;
+  if (!column) return items;
+  const multiplier = direction === 'ascending' ? 1 : -1;
+  return [...items].sort((left, right) => {
+    if (column === 'item') return multiplier * left.item.localeCompare(right.item, undefined, { sensitivity: 'base', numeric: true });
+    if (column === 'price') return multiplier * (Number(left.price) - Number(right.price));
+    const leftAmount = parseReceiptAmount(left.amount);
+    const rightAmount = parseReceiptAmount(right.amount);
+    if (!leftAmount || !rightAmount) return leftAmount ? -1 : rightAmount ? 1 : 0;
+    return multiplier * (leftAmount.value - rightAmount.value);
+  });
 }
 
 function renderSpendingDetails() {
@@ -622,6 +646,12 @@ function renderSpendingDetails() {
     if (!supermarkets.has(name)) supermarkets.set(name, []);
     supermarkets.get(name).push(row);
   });
+  const headers = [['item', 'Item'], ['amount', 'Amount'], ['price', 'Price']].map(([column, label]) => {
+    const active = receiptAnalytics.receiptSort.column === column;
+    const direction = receiptAnalytics.receiptSort.direction;
+    const indicator = active ? (direction === 'ascending' ? '&#9650;' : '&#9660;') : '&#8597;';
+    return `<th scope="col"${active ? ` aria-sort="${direction}"` : ''}><button type="button" class="receipt-date-sort" data-receipt-sort="${column}" title="Sort by ${label}">${label}<span aria-hidden="true">${indicator}</span></button></th>`;
+  }).join('');
   receiptDateItems.innerHTML = [...supermarkets.entries()].map(([name, items]) => `
     <section class="receipt-date-store">
       <h3>${escapeReceiptHtml(name)} · ${escapeReceiptHtml(formatReceiptDate(date))}</h3>
@@ -630,12 +660,15 @@ function renderSpendingDetails() {
         <div><span>Savings</span><strong>${formatReceiptMoney(items.reduce((sum, row) => sum + receiptDiscount(row), 0))}</strong></div>
       </div>
       <table class="receipt-date-table">
-        <colgroup><col><col><col><col></colgroup>
-        <thead><tr><th scope="col">Item</th><th scope="col">Amount</th><th scope="col">Price</th><th scope="col">Discount</th></tr></thead>
-        <tbody>${items.map((row) => {
+        <colgroup><col><col><col></colgroup>
+        <thead><tr>${headers}</tr></thead>
+        <tbody>${sortReceiptItems(items).map((row) => {
           const price = formatReceiptMoney(Number(row.price));
-          const discount = row.discount == null ? '—' : formatReceiptMoney(Number(row.discount));
-          return `<tr><td title="${escapeReceiptHtml(row.item)}">${escapeReceiptHtml(row.item)}</td><td title="${escapeReceiptHtml(row.amount)}">${escapeReceiptHtml(row.amount)}</td><td title="${escapeReceiptHtml(price)}">${escapeReceiptHtml(price)}</td><td title="${escapeReceiptHtml(discount)}">${escapeReceiptHtml(discount)}</td></tr>`;
+          const discount = receiptDiscount(row);
+          const discountRow = discount > 0
+            ? `<tr class="receipt-date-discount"><td colspan="2">Discount</td><td>${escapeReceiptHtml(formatReceiptMoney(discount))}</td></tr>`
+            : '';
+          return `<tr${discount > 0 ? ' class="receipt-date-discounted-item"' : ''}><td title="${escapeReceiptHtml(row.item)}">${escapeReceiptHtml(row.item)}</td><td title="${escapeReceiptHtml(row.amount)}">${escapeReceiptHtml(row.amount)}</td><td title="${escapeReceiptHtml(price)}">${escapeReceiptHtml(price)}</td></tr>${discountRow}`;
         }).join('')}</tbody>
       </table>
     </section>
@@ -716,11 +749,9 @@ function aggregateReceiptItems(rows) {
     const item = items.get(key);
     item.purchases += 1;
     item.spend += Number(row.price);
-    const match = row.amount.match(/^\s*(\d+(?:[.,]\d+)?)\s*(.*)$/);
-    if (match) {
-      const amount = Number(match[1].replace(',', '.'));
-      const unit = match[2].trim();
-      item.amounts.set(unit, (item.amounts.get(unit) || 0) + amount);
+    const amount = parseReceiptAmount(row.amount);
+    if (amount) {
+      item.amounts.set(amount.unit, (item.amounts.get(amount.unit) || 0) + amount.value);
     } else {
       item.amounts.set(row.amount, (item.amounts.get(row.amount) || 0) + 1);
     }

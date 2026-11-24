@@ -79,29 +79,36 @@ test('spending details load and display supermarkets', async () => {
   let html = elements.get('receipt-date-items').innerHTML;
   assert.match(html, /<h3>Føtex &lt;store&gt; · 29\. okt\. 2026<\/h3>/);
   assert.match(html, /<h3>Unknown · 29\. okt\. 2026<\/h3>/);
-  assert.match(html, /<th scope="col">Item<\/th><th scope="col">Amount<\/th><th scope="col">Price<\/th><th scope="col">Discount<\/th>/);
-  assert.doesNotMatch(html, /<th scope="col">Category<\/th>|<th scope="col">Owner<\/th>/);
-  assert.equal((html.match(/<tbody><tr>/g) || []).length, 2);
+  for (const column of ['item', 'amount', 'price']) assert.match(html, new RegExp(`data-receipt-sort="${column}"`));
+  assert.doesNotMatch(html, /<th scope="col">(Discount|Category|Owner)<\/th>/);
+  assert.equal((html.match(/<tbody>/g) || []).length, 2);
   const [store, unknown] = html.split('<section class="receipt-date-store">').slice(1);
   assert.ok(store.includes(`<span>Price</span><strong>${money.format(25)}</strong>`));
   assert.ok(store.includes(`<span>Savings</span><strong>${money.format(9)}</strong>`));
   assert.ok(unknown.includes(`<span>Price</span><strong>${money.format(25)}</strong>`));
   assert.ok(unknown.includes(`<span>Savings</span><strong>${money.format(3.5)}</strong>`));
-  assert.ok(store.includes(money.format(7)));
+  assert.ok(store.includes(`<tr class="receipt-date-discount"><td colspan="2">Discount</td><td>${money.format(9)}</td></tr>`));
+  assert.ok(unknown.includes(`<tr class="receipt-date-discount"><td colspan="2">Discount</td><td>${money.format(3.5)}</td></tr>`));
   vm.runInContext(`
     receiptAnalytics.rows.push({
       date:'2026-10-29', item:'<Special>', item_id:'milk', category:'Dairy',
       amount:'2 stk', price:5, supermarket:'Føtex <store>', discount:null
+    }, {
+      date:'2026-10-29', item:'Plus only', item_id:'milk', category:'Dairy',
+      amount:'1 stk', price:4, supermarket:'Føtex <store>', discount:0, discount_plus:1.25
+    }, {
+      date:'2026-10-29', item:'Zero discount', item_id:'milk', category:'Dairy',
+      amount:'1 stk', price:3, supermarket:'Føtex <store>', discount:0, discount_plus:0
     });
     renderSpendingDetails();
   `, context);
   html = elements.get('receipt-date-items').innerHTML;
   assert.equal((html.match(/<h3>Føtex &lt;store&gt; · 29\. okt\. 2026<\/h3>/g) || []).length, 1);
-  assert.ok(html.includes(`<span>Price</span><strong>${money.format(30)}</strong>`));
-  assert.match(html, /&lt;Special&gt;/);
-  assert.match(html, /title="2 stk">2 stk/);
-  assert.match(html, /title="—">—/);
-  vm.runInContext('receiptAnalytics.rows.pop()', context);
+  assert.ok(html.includes(`<span>Price</span><strong>${money.format(37)}</strong>`));
+  assert.ok(html.includes(`<tr><td title="&lt;Special&gt;">&lt;Special&gt;</td><td title="2 stk">2 stk</td><td title="${money.format(5)}">${money.format(5)}</td></tr>`));
+  assert.ok(html.includes(`<td title="Plus only">Plus only</td><td title="1 stk">1 stk</td><td title="${money.format(4)}">${money.format(4)}</td></tr><tr class="receipt-date-discount"><td colspan="2">Discount</td><td>${money.format(1.25)}</td></tr>`));
+  assert.ok(html.includes(`<tr><td title="Zero discount">Zero discount</td><td title="1 stk">1 stk</td><td title="${money.format(3)}">${money.format(3)}</td></tr></tbody>`));
+  vm.runInContext('receiptAnalytics.rows.splice(-3)', context);
 
   vm.runInContext("receiptAnalytics.itemSearch = 'missing'; renderSpendingDetails()", context);
   assert.equal(elements.get('receipt-date-items').innerHTML, '');
@@ -238,6 +245,7 @@ test('insights ignores spending selections but respects filter pane and paginati
   const toolbar = elements.get('receipt-analytics-toolbar');
   const page = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert.match(page, /id="receipt-filters-toggle"[^>]*aria-expanded="false"[^>]*aria-label="Show filters"/);
+  assert.match(page, /id="receipt-filters-toggle"[^>]*><svg[^>]*><path d="m6 9 6 6 6-6"\/><\/svg><\/button>/);
   assert.match(page, /id="receipt-analytics-toolbar"[^>]*receipt-filters-collapsed/);
   const toolbarClasses = new Set(['receipt-filters-collapsed']);
   toolbar.classList.toggle = (name, enabled) => {
@@ -527,6 +535,9 @@ test('shopping date opens receipt dialog and closing restores the month', () => 
     ];
   `, context);
   const dialog = elements.get('receipt-date-dialog');
+  const calendar = elements.get('receipt-calendar');
+  assert.equal(calendar.listeners.mouseover, undefined);
+  assert.equal(calendar.listeners.focusin, undefined);
   const openDate = () => elements.get('receipt-calendar').listeners.click({
     target: { closest: () => dateButton }
   });
@@ -554,6 +565,74 @@ test('shopping date opens receipt dialog and closing restores the month', () => 
   vm.runInContext("receiptAnalytics.itemSearch = 'missing'; renderReceiptCalendar(filteredReceiptRows())", context);
   assert.equal(dialog.open, false);
   assert.equal(vm.runInContext('receiptAnalytics.selectedDate', context), null);
+});
+
+test('receipt headings sort each supermarket and keep discounts with their items', () => {
+  const elements = new Map();
+  const tables = [{}, {}];
+  let focusedTable = -1;
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, {
+          listeners: {},
+          classList: { toggle() {} },
+          addEventListener(type, handler) { this.listeners[type] = handler; },
+          querySelectorAll(selector) {
+            if (id !== 'receipt-date-items') return [];
+            if (selector === '.receipt-date-table') return tables;
+            return tables.map((_, index) => ({ focus() { focusedTable = index; } }));
+          }
+        });
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => ({}),
+      documentElement: { style: { setProperty() {} } }
+    },
+    ResizeObserver: class { observe() {} },
+    supabaseClient: { auth: { onAuthStateChange() {}, getSession: () => new Promise(() => {}) } }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source, context);
+  vm.runInContext(`
+    receiptAnalytics.year = '2024';
+    receiptAnalytics.month = '02';
+    receiptAnalytics.selectedDate = '2024-02-29';
+    receiptAnalytics.rows = [
+      {date:'2024-02-29', item:'Zebra', amount:'10 stk', price:2, supermarket:'One', discount:1},
+      {date:'2024-02-29', item:'Apple', amount:'1,5 kg', price:12, supermarket:'One'},
+      {date:'2024-02-29', item:'Bread', amount:'2 stk', price:5, supermarket:'One'},
+      {date:'2024-02-29', item:'Unknown amount', amount:'unknown', price:7, supermarket:'One'},
+      {date:'2024-02-29', item:'Orange', amount:'3 stk', price:9, supermarket:'Two'},
+      {date:'2024-02-29', item:'Pear', amount:'1 stk', price:3, supermarket:'Two'}
+    ];
+    renderSpendingDetails();
+  `, context);
+  const receipt = elements.get('receipt-date-items');
+  const sort = (column) => receipt.listeners.click({
+    target: { closest: () => ({ dataset: { receiptSort: column }, closest: () => tables[1] }) }
+  });
+  const names = () => receipt.innerHTML.split('<section class="receipt-date-store">').slice(1).map((store) =>
+    [...store.matchAll(/<td title="([^"]+)">\1<\/td>/g)].map((match) => match[1]).filter((value) =>
+      ['Zebra', 'Apple', 'Bread', 'Unknown amount', 'Orange', 'Pear'].includes(value))
+  );
+  assert.deepEqual(names(), [['Zebra', 'Apple', 'Bread', 'Unknown amount'], ['Orange', 'Pear']]);
+  sort('price');
+  assert.deepEqual(names(), [['Zebra', 'Bread', 'Unknown amount', 'Apple'], ['Pear', 'Orange']]);
+  assert.match(receipt.innerHTML, /<th scope="col" aria-sort="ascending"><button[^>]*data-receipt-sort="price"/);
+  assert.match(receipt.innerHTML, /title="Zebra">Zebra<\/td>[\s\S]*?<\/tr><tr class="receipt-date-discount">/);
+  assert.equal(focusedTable, 1);
+  sort('price');
+  assert.deepEqual(names(), [['Apple', 'Unknown amount', 'Bread', 'Zebra'], ['Orange', 'Pear']]);
+  assert.match(receipt.innerHTML, /aria-sort="descending"/);
+  sort('item');
+  assert.deepEqual(names()[0], ['Apple', 'Bread', 'Unknown amount', 'Zebra']);
+  sort('amount');
+  assert.deepEqual(names()[0], ['Apple', 'Bread', 'Zebra', 'Unknown amount']);
+  sort('amount');
+  assert.deepEqual(names()[0], ['Zebra', 'Bread', 'Apple', 'Unknown amount']);
+  assert.equal(vm.runInContext("receiptAnalytics.rows[0].item", context), 'Zebra');
 });
 
 test('top items paginate all results', () => {
@@ -798,6 +877,99 @@ test('shopping summary renders an accessible clear-checks icon', () => {
   assert.match(context.shoppingSummary.innerHTML, /data-shopping-clear-checks aria-label="Untick all checked shopping items"/);
   assert.match(context.shoppingSummary.innerHTML, /<svg[^>]*aria-hidden="true"/);
   assert.doesNotMatch(context.shoppingSummary.innerHTML, />\s*Clear checks\s*</);
+});
+
+test('live update interruptions clear on reconnect and refresh missed changes', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'script.js'), 'utf8');
+  const subscribeFunction = source.match(/function subscribeToSharedUpdates\(\) \{[\s\S]*?\n\}/)[0];
+  const channels = [];
+  const warnings = [];
+  let refreshes = 0;
+  const context = vm.createContext({
+    realtimeChannel: null,
+    realtimeStatus: { hidden: true },
+    appStatus: { textContent: 'An unrelated save failed' },
+    console: { error: (...args) => warnings.push(args) },
+    supabaseClient: {
+      channel() {
+        const channel = {
+          on() { return this; },
+          subscribe(callback) { this.callback = callback; }
+        };
+        channels.push(channel);
+        return channel;
+      },
+      removeChannel(channel) { channel.callback('CLOSED'); }
+    },
+    state: {},
+    renderShoppingList() {},
+    renderPlanner() {},
+    scheduleSharedStateRefresh() { refreshes++; },
+    showMessage(element, message, isError) { element.textContent = message; element.isError = isError; },
+    clearMessage(element) { element.textContent = ''; }
+  });
+  vm.runInContext(`${subscribeFunction}; subscribeToSharedUpdates()`, context);
+  const first = channels[0];
+  first.callback('SUBSCRIBED');
+  assert.equal(refreshes, 0);
+  first.callback('CHANNEL_ERROR', new Error('transport error'));
+  assert.match(context.realtimeStatus.textContent, /Live updates are unavailable/);
+  assert.equal(context.realtimeStatus.hidden, false);
+  assert.equal(context.realtimeStatus.isError, true);
+  assert.equal(context.appStatus.textContent, 'An unrelated save failed');
+  first.callback('SUBSCRIBED');
+  assert.equal(context.realtimeStatus.hidden, true);
+  assert.equal(context.realtimeStatus.textContent, '');
+  assert.equal(refreshes, 1);
+  first.callback('SUBSCRIBED');
+  assert.equal(refreshes, 2);
+
+  vm.runInContext('subscribeToSharedUpdates()', context);
+  first.callback('TIMED_OUT');
+  assert.equal(context.realtimeStatus.hidden, true);
+  channels[1].callback('TIMED_OUT');
+  assert.equal(context.realtimeStatus.hidden, false);
+  channels[1].callback('SUBSCRIBED');
+  assert.equal(refreshes, 3);
+  assert.equal(context.realtimeStatus.hidden, true);
+  assert.equal(warnings.length, 2);
+});
+
+test('shared state refresh reloads missed changes and reports failures', async () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'script.js'), 'utf8');
+  const refreshFunction = source.match(/function scheduleSharedStateRefresh\(\) \{[\s\S]*?\n\}/)[0];
+  let pending;
+  let shouldFail = false;
+  let renders = 0;
+  const context = vm.createContext({
+    window: {
+      clearTimeout() {},
+      setTimeout(callback) { pending = callback; return 1; }
+    },
+    sharedRefreshTimer: null,
+    currentUserId: 'user',
+    state: { shoppingChecks: {} },
+    appStatus: {},
+    console: { error() {} },
+    async loadUserState(userId, initialize) {
+      assert.equal(userId, 'user');
+      assert.equal(initialize, false);
+      if (shouldFail) throw new Error('Refresh failed');
+      return { shoppingChecks: { milk: true } };
+    },
+    renderAll() { renders++; },
+    showMessage(element, message, isError) { element.textContent = message; element.isError = isError; }
+  });
+  vm.runInContext(`${refreshFunction}; scheduleSharedStateRefresh()`, context);
+  await pending();
+  assert.equal(context.state.shoppingChecks.milk, true);
+  assert.equal(renders, 1);
+  shouldFail = true;
+  vm.runInContext('scheduleSharedStateRefresh()', context);
+  await pending();
+  assert.equal(context.appStatus.textContent, 'Refresh failed');
+  assert.equal(context.appStatus.isError, true);
+  assert.equal(renders, 1);
 });
 
 test('clear checks updates all persisted checked rows, including hidden items', async () => {
