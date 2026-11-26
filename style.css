@@ -2950,6 +2950,23 @@ body[data-theme="dark"] .weekly-chart-count {
   margin: 0;
 }
 
+.receipt-category-dialog {
+  max-width: 420px;
+}
+
+.receipt-category-dialog form {
+  display: grid;
+  gap: 10px;
+}
+
+.receipt-category-dialog form button {
+  justify-self: start;
+}
+
+.receipt-category-dialog .error:empty {
+  display: none;
+}
+
 .receipt-date-dialog {
   max-height: 90vh;
 }
@@ -3339,6 +3356,10 @@ body[data-theme="dark"] .receipt-filters-toggle {
   flex-direction: row;
 }
 
+.receipt-top-card .receipt-card-heading .eyebrow {
+  margin: 0 !important;
+}
+
 .receipt-top-table-wrap {
   overflow: visible;
   border: 0;
@@ -3361,6 +3382,7 @@ body[data-theme="dark"] .receipt-filters-toggle {
 }
 
 #receipt-panel-insights .receipt-top-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -3370,6 +3392,39 @@ body[data-theme="dark"] .receipt-filters-toggle {
   background-color: var(--panel-alt);
   background-image: linear-gradient(to right, rgba(105, 189, 134, 0.24) var(--receipt-item-bar), transparent var(--receipt-item-bar));
   box-shadow: none;
+}
+
+.receipt-top-item-button {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.receipt-top-item-button::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.receipt-top-item-button:focus-visible {
+  outline: none;
+}
+
+.receipt-top-item-button:focus-visible::after {
+  outline: 3px solid var(--primary);
+  outline-offset: -3px;
+}
+
+.receipt-top-item-spend .receipt-price-trend-button {
+  position: relative;
+  z-index: 1;
 }
 
 #receipt-panel-insights .receipt-top-card .receipt-top-table td {
@@ -3403,6 +3458,11 @@ body[data-theme="dark"] .receipt-filters-toggle {
 .receipt-breakdown-button[aria-pressed="true"] {
   background: var(--primary);
   color: white;
+}
+
+.receipt-breakdown-button:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .receipt-breakdown-button svg,
@@ -3444,6 +3504,10 @@ body[data-theme="dark"] .receipt-filters-toggle {
 .receipt-supermarket-summary {
   display: grid;
   gap: 13px;
+}
+
+.receipt-selection-clear {
+  margin-bottom: 10px;
 }
 
 .receipt-pagination {

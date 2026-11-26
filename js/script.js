@@ -294,6 +294,7 @@ let currentUserId = null;
 let sharedOwnerId = null;
 let realtimeChannel = null;
 let sharedRefreshTimer = null;
+let navigationChangedWhileLoading = false;
 
 init();
 
@@ -392,6 +393,7 @@ async function handleAuthSession(session) {
   window.clearTimeout(sharedRefreshTimer);
   currentUserId = session.user.id;
   sharedOwnerId = null;
+  navigationChangedWhileLoading = false;
   authPanel.hidden = true;
   appShell.hidden = false;
   signedInUser.textContent = session.user.email || '';
@@ -403,7 +405,10 @@ async function handleAuthSession(session) {
       return;
     }
     Object.assign(state, loadedState);
-    renderAll();
+    const shoppingItemCount = renderAll();
+    if (!navigationChangedWhileLoading) {
+      activateNavigation(shoppingItemCount ? 'shopping' : 'analytics');
+    }
     clearMessage(appStatus);
     subscribeToSharedUpdates();
   } catch (error) {
@@ -416,9 +421,8 @@ async function handleAuthSession(session) {
 function bindNavigation() {
   navButtons.forEach((button) => {
     button.addEventListener('click', () => {
-      const target = button.dataset.section;
-      navButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
-      panels.forEach((panel) => panel.classList.toggle('active', panel.id === target));
+      navigationChangedWhileLoading = true;
+      activateNavigation(button.dataset.section);
       sidebar.classList.remove('menu-open');
       menuToggle.setAttribute('aria-expanded', 'false');
       menuToggle.setAttribute('aria-label', 'Open navigation menu');
@@ -427,6 +431,11 @@ function bindNavigation() {
       }
     });
   });
+}
+
+function activateNavigation(target) {
+  navButtons.forEach((button) => button.classList.toggle('active', button.dataset.section === target));
+  panels.forEach((panel) => panel.classList.toggle('active', panel.id === target));
 }
 
 function bindDefaultValues() {
@@ -750,9 +759,10 @@ function renderAll() {
   renderIngredients();
   renderDishes();
   renderPlanner();
-  renderShoppingList();
+  const shoppingItemCount = renderShoppingList();
   updateDishIngredientOptions();
   renderDishCostPreview();
+  return shoppingItemCount;
 }
 
 function updateIngredientCategoryOptions() {
@@ -1623,7 +1633,7 @@ function renderShoppingList() {
 
   if (!ingredientMap.size) {
     shoppingList.innerHTML = '<div class="empty">Add dishes or individual ingredients from your weekly planner to build your shopping list.</div>';
-    return;
+    return totalItems;
   }
 
   const groups = [...categories.entries()].map(([category, items]) => {
@@ -1679,6 +1689,7 @@ function renderShoppingList() {
         `${checkedCount}/${categoryCheckboxes.length}`;
     }));
   });
+  return totalItems;
 }
 
 async function clearShoppingChecks() {

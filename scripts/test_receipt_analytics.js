@@ -4,12 +4,75 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-test('analytics is the default active navigation and panel', () => {
+test('analytics is the initial navigation before the shopping list loads', () => {
   const page = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert.match(page, /class="nav-btn active" data-section="analytics"/);
   assert.match(page, /id="analytics" class="panel active"/);
   assert.match(page, /class="nav-btn" data-section="shopping"/);
   assert.match(page, /id="shopping" class="panel"/);
+});
+
+test('loaded shopping list selects the default without overriding navigation during loading', async () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'script.js'), 'utf8');
+  const handleSession = source.match(/async function handleAuthSession\(session\) \{[\s\S]*?\n\}/)[0];
+  const activateNavigation = source.match(/function activateNavigation\(target\) \{[\s\S]*?\n\}/)[0];
+  const renderShoppingList = source.match(/function renderShoppingList\(\) \{[\s\S]*?\n\}/)[0];
+  const makeClassList = () => ({
+    active: false,
+    toggle(name, enabled) { if (name === 'active') this.active = enabled; }
+  });
+  const buttons = ['shopping', 'analytics', 'dishes'].map((section) => ({
+    dataset: { section }, classList: makeClassList()
+  }));
+  const panels = buttons.map((button) => ({ id: button.dataset.section, classList: makeClassList() }));
+  const context = vm.createContext({
+    dayNames: ['Monday'],
+    state: { plan: { Monday: [] }, dishes: [], ingredients: [], excludedIngredients: [], manualShoppingItems: [], shoppingChecks: {} },
+    currentUserId: null, sharedOwnerId: null, realtimeChannel: null, sharedRefreshTimer: null,
+    navigationChangedWhileLoading: false, currentDishIngredients: [],
+    navButtons: buttons, panels,
+    authPanel: {}, appShell: {}, signedInUser: {}, appStatus: {}, realtimeStatus: {},
+    shoppingSummary: {},
+    shoppingList: { classList: makeClassList(), style: { setProperty() {}, removeProperty() {} }, querySelectorAll: () => [] },
+    window: { clearTimeout() {} },
+    supabaseClient: {},
+    clearMessage() {}, showMessage() {}, subscribeToSharedUpdates() {},
+    isIngredientExcluded: (day, dish, ingredient) => context.state.excludedIngredients.includes(ingredient),
+    findIngredientById: (id) => context.state.ingredients.find((item) => item.id === id),
+    renderCategoryBadge: (category) => category,
+    escapeHtml: (value) => String(value),
+    renderActionIcon: () => ''
+  });
+  vm.runInContext(`${handleSession}\n${activateNavigation}\n${renderShoppingList}`, context);
+  context.renderAll = () => vm.runInContext('renderShoppingList()', context);
+  const ingredient = { id: 'milk', name: 'Milk', category: 'Dairy', price: 2, unit: 'unit' };
+  const dish = { id: 'meal', ingredients: [{ ingredientId: 'milk', name: 'Milk', quantity: 1 }] };
+  const session = { user: { id: 'user', email: 'test@example.invalid' } };
+  const load = async (loaded) => {
+    context.currentUserId = null;
+    context.loadUserState = async () => loaded;
+    await context.handleAuthSession(session);
+  };
+  const base = { plan: { Monday: [] }, dishes: [dish], ingredients: [ingredient], excludedIngredients: [], manualShoppingItems: [], shoppingChecks: {} };
+  await load(base);
+  assert.equal(buttons[1].classList.active, true);
+  await load({ ...base, plan: { Monday: ['meal'] }, shoppingChecks: { 'Dairy|Milk': true } });
+  assert.equal(buttons[0].classList.active, true);
+  assert.equal(panels[0].classList.active, true);
+  await load({ ...base, plan: { Monday: ['meal'] }, excludedIngredients: ['milk'] });
+  assert.equal(buttons[1].classList.active, true);
+  await load({ ...base, manualShoppingItems: [{ ingredientId: 'milk', quantity: 1 }] });
+  assert.equal(buttons[0].classList.active, true);
+
+  context.currentUserId = null;
+  let finishLoad;
+  context.loadUserState = () => new Promise((resolve) => { finishLoad = resolve; });
+  const pending = context.handleAuthSession(session);
+  context.navigationChangedWhileLoading = true;
+  context.activateNavigation('dishes');
+  finishLoad(base);
+  await pending;
+  assert.equal(buttons[2].classList.active, true);
 });
 
 test('spending details load and display supermarkets', async () => {
@@ -663,6 +726,59 @@ test('top items paginate all results', () => {
   assert.match(elements.get('receipt-top-items').innerHTML, /--receipt-item-bar: 0%/);
 });
 
+test('item insights sort toggle orders filtered results and resets pagination', () => {
+  const elements = new Map();
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, {
+          listeners: {}, classList: { toggle() {} },
+          setAttribute(name, value) { this[name] = value; },
+          addEventListener(type, handler) { this.listeners[type] = handler; },
+          querySelectorAll: () => []
+        });
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => ({}),
+      documentElement: { style: { setProperty() {} } }
+    },
+    ResizeObserver: class { observe() {} },
+    supabaseClient: { auth: { onAuthStateChange() {}, getSession: () => new Promise(() => {}) } }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source, context);
+  vm.runInContext(`
+    receiptAnalytics.year = '2024';
+    receiptAnalytics.rows = Array.from({length: 11}, (_, i) => ({
+      date:'2024-01-01', item_id:String(i), item:'Item ' + i,
+      category:'Food', supermarket:'Shop', amount:'1', price:100 - i
+    }));
+    receiptAnalytics.rows.push({date:'2024-01-02', item_id:'10', item:'Item 10',
+      category:'Food', supermarket:'Shop', amount:'1', price:1});
+    renderTopReceiptItems(filteredReceiptRows(false));
+    receiptAnalytics.topPage = 1;
+  `, context);
+  const spend = elements.get('receipt-sort-spend');
+  const purchases = elements.get('receipt-sort-purchases');
+  purchases.listeners.click();
+  assert.equal(purchases['aria-pressed'], 'true');
+  assert.equal(spend['aria-pressed'], 'false');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
+  let html = elements.get('receipt-top-items').innerHTML;
+  assert.ok(html.indexOf('Item 10') < html.indexOf('Item 0'));
+  assert.match(html, /--receipt-item-bar: 91%/);
+  assert.match(html, /--receipt-item-bar: 100%/);
+  spend.listeners.click();
+  html = elements.get('receipt-top-items').innerHTML;
+  assert.equal(spend['aria-pressed'], 'true');
+  assert.equal(purchases['aria-pressed'], 'false');
+  assert.ok(html.indexOf('Item 0') < html.indexOf('Item 10'));
+  const page = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(page, /id="receipt-sort-spend"[^>]*aria-label="Sort by total spent"[^>]*aria-pressed="true"/);
+  assert.match(page, /id="receipt-sort-purchases"[^>]*aria-label="Sort by times bought"[^>]*aria-pressed="false"/);
+});
+
 test('bar charts paginate all categories and supermarkets with a consistent scale', () => {
   const elements = new Map();
   const context = vm.createContext({
@@ -765,6 +881,190 @@ test('mappings allow manual edits without local category recommendations', async
   vm.runInContext("receiptAnalytics.reviewOnly = true; renderAllReceiptItems()", context);
   assert.match(elements.get('receipt-all-items').innerHTML, /BANANER/);
   assert.doesNotMatch(elements.get('receipt-all-items').innerHTML, /YOGHURT/);
+});
+
+test('item insights category dialog saves, clears, and reports errors without opening the price trend', async () => {
+  const elements = new Map();
+  const updates = [];
+  let failure = false;
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, {
+          listeners: {}, classList: { toggle() {} },
+          setAttribute(name, value) { this[name] = value; },
+          addEventListener(type, handler) { this.listeners[type] = handler; },
+          querySelectorAll: () => [],
+          showModal() { this.open = true; },
+          close() { this.open = false; },
+          focus() { this.focused = true; }
+        });
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => ({}),
+      documentElement: { style: { setProperty() {} } }
+    },
+    ResizeObserver: class { observe() {} },
+    supabaseClient: {
+      auth: { onAuthStateChange() {}, getSession: () => new Promise(() => {}) },
+      from(table) {
+        return {
+          update(values) {
+            return { eq(key, id) {
+              updates.push({ table, category: values.category, key, id });
+              return Promise.resolve({ error: failure ? { message: 'Save failed' } : null });
+            } };
+          }
+        };
+      }
+    }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source, context);
+  vm.runInContext(`
+    receiptAnalytics.items = [{id:'milk', name:'Milk & more', category:'Dairy'}];
+    receiptAnalytics.rows = [{date:'2024-01-01', item_id:'milk', item:'Milk & more',
+      amount:'1', price:10, category:'Dairy', supermarket:'Shop', price_per_unit:10}];
+    receiptAnalytics.year = '2024';
+    renderReceiptAnalytics();
+  `, context);
+  const top = elements.get('receipt-top-items');
+  assert.match(top.innerHTML, /data-categorize-item="milk" aria-label="Edit category for Milk &amp; more"/);
+  const clickItem = () => top.listeners.click({
+    target: { closest(selector) { return selector === '[data-categorize-item]' ? { dataset: { categorizeItem: 'milk' } } : null; } }
+  });
+  const dialog = elements.get('receipt-category-dialog');
+  const input = elements.get('receipt-category-input');
+  const form = elements.get('receipt-category-form');
+  clickItem();
+  assert.equal(dialog.open, true);
+  assert.equal(elements.get('receipt-category-dialog-title').textContent, 'Milk & more');
+  assert.equal(input.value, 'Dairy');
+  input.value = 'Fruit';
+  await form.listeners.submit({ preventDefault() {} });
+  assert.deepEqual(updates[0], { table: 'receipt_item_dimension', category: 'Fruit', key: 'id', id: 'milk' });
+  assert.equal(dialog.open, false);
+  assert.equal(vm.runInContext('receiptAnalytics.items[0].category', context), 'Fruit');
+  assert.equal(vm.runInContext('receiptAnalytics.rows[0].category', context), 'Fruit');
+  assert.match(top.innerHTML, /Fruit/);
+  assert.match(elements.get('receipt-all-items').innerHTML, /value="Fruit"/);
+  assert.equal(elements.get('receipt-sort-spend').focused, true);
+
+  clickItem();
+  input.value = ' ';
+  await form.listeners.submit({ preventDefault() {} });
+  assert.equal(updates[1].category, null);
+  assert.equal(vm.runInContext('receiptAnalytics.items[0].category', context), null);
+  assert.equal(vm.runInContext('receiptAnalytics.rows[0].category', context), '');
+
+  clickItem();
+  failure = true;
+  input.value = 'Other';
+  await form.listeners.submit({ preventDefault() {} });
+  assert.equal(dialog.open, true);
+  assert.equal(elements.get('receipt-category-error').textContent, 'Save failed');
+  assert.equal(input.disabled, false);
+  assert.equal(vm.runInContext('receiptAnalytics.items[0].category', context), null);
+  elements.get('receipt-category-close').listeners.click();
+  assert.equal(dialog.open, false);
+
+  const trend = { dataset: { priceTrendItem: 'milk' } };
+  top.listeners.click({ target: { closest(selector) { return selector === '[data-price-trend-item]' ? trend : null; } } });
+  assert.equal(elements.get('receipt-price-trend-dialog').open, true);
+  assert.equal(dialog.open, false);
+});
+
+test('category saves preserve insight selections, filters and valid pages', async () => {
+  const elements = new Map();
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, {
+          listeners: {}, classList: { toggle() {} },
+          setAttribute(name, value) { this[name] = value; },
+          addEventListener(type, handler) { this.listeners[type] = handler; },
+          querySelectorAll: () => [],
+          focus() { this.focused = true; }
+        });
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => ({}),
+      documentElement: { style: { setProperty() {} } }
+    },
+    ResizeObserver: class { observe() {} },
+    supabaseClient: {
+      auth: { onAuthStateChange() {}, getSession: () => new Promise(() => {}) },
+      from: () => ({ update: () => ({ eq: async () => ({ error: null }) }) })
+    }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source, context);
+  vm.runInContext(`
+    receiptAnalytics.year = '2024';
+    receiptAnalytics.category = 'Food';
+    receiptAnalytics.supermarket = 'Shop';
+    receiptAnalytics.topSort = 'purchases';
+    receiptAnalytics.insightCategories = ['Food'];
+    receiptAnalytics.topPage = 1;
+    receiptAnalytics.items = Array.from({length: 12}, (_, i) => ({id:String(i), name:'Item '+i, category:'Food'}));
+    receiptAnalytics.rows = receiptAnalytics.items.map((item, i) => ({
+      date:'2024-01-01', item_id:item.id, item:item.name, category:item.category,
+      supermarket:'Shop', amount:'1', price:20-i
+    }));
+    renderReceiptAnalytics();
+  `, context);
+  await vm.runInContext("saveReceiptCategory('0', 'Other', 'Item 0')", context);
+  assert.equal(vm.runInContext('receiptAnalytics.category', context), 'Food');
+  assert.equal(vm.runInContext('receiptAnalytics.supermarket', context), 'Shop');
+  assert.equal(vm.runInContext('receiptAnalytics.topSort', context), 'purchases');
+  assert.equal(vm.runInContext('receiptAnalytics.insightCategories[0]', context), 'Food');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
+  assert.doesNotMatch(elements.get('receipt-top-items').innerHTML, /Item 0</);
+  assert.match(elements.get('receipt-category-summary').innerHTML, /data-bar-categories="\[&quot;Food&quot;\]" aria-pressed="true"/);
+
+  vm.runInContext(`
+    receiptAnalytics.category = '';
+    receiptAnalytics.insightCategories = null;
+    receiptAnalytics.insightSupermarkets = ['Shop'];
+    receiptAnalytics.breakdownView = 'supermarket';
+  `, context);
+  await vm.runInContext("saveReceiptCategory('1', 'Other', 'Item 1')", context);
+  assert.equal(vm.runInContext('receiptAnalytics.insightSupermarkets[0]', context), 'Shop');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
+  assert.match(elements.get('receipt-supermarket-summary').innerHTML, /data-bar-supermarkets="\[&quot;Shop&quot;\]" aria-pressed="true"/);
+
+  vm.runInContext(`
+    receiptAnalytics.category = 'Food';
+    receiptAnalytics.insightSupermarkets = null;
+    receiptAnalytics.insightCategories = ['Food'];
+    receiptAnalytics.breakdownView = 'category';
+    receiptAnalytics.items = [{id:'last', name:'Last', category:'Food'}];
+    receiptAnalytics.rows = [{date:'2024-01-01', item_id:'last', item:'Last',
+      category:'Food', supermarket:'Shop', amount:'1', price:10}];
+    receiptAnalytics.topPage = 0;
+  `, context);
+  await vm.runInContext("saveReceiptCategory('last', 'Other', 'Last')", context);
+  assert.equal(vm.runInContext('receiptAnalytics.category', context), 'Food');
+  assert.equal(elements.get('receipt-category-filter').value, 'Food');
+  assert.match(elements.get('receipt-category-filter').innerHTML, /<option value="Food">Food<\/option>/);
+  assert.match(elements.get('receipt-top-items').innerHTML, /No items match these filters/);
+  const chart = elements.get('receipt-category-summary');
+  assert.match(chart.innerHTML, /data-missing-selection="true"[^>]*aria-pressed="true">Clear category: Food/);
+  const missingBar = {
+    dataset: { barCategories: JSON.stringify(['Food']), missingSelection: 'true' },
+    setAttribute() {},
+    remove() { this.removed = true; }
+  };
+  chart.querySelectorAll = () => [missingBar];
+  chart.listeners.click({ target: { closest: () => missingBar } });
+  assert.equal(vm.runInContext('receiptAnalytics.insightCategories', context), null);
+  assert.equal(missingBar.removed, true);
+  assert.equal(elements.get('receipt-show-categories').focused, true);
+  elements.get('receipt-category-filter').value = '';
+  elements.get('receipt-category-filter').listeners.change();
+  assert.match(elements.get('receipt-top-items').innerHTML, /Last/);
 });
 
 test('KPIs follow the selected month and day while averages follow the filtered year', () => {

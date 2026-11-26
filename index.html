@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
     <link rel="apple-touch-icon" href="assets/app-icon-180.png" />
     <link rel="manifest" href="manifest.webmanifest?v=2" />
-    <link rel="stylesheet" href="style.css?v=33" />
+    <link rel="stylesheet" href="style.css?v=36" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -298,7 +298,13 @@
           <section id="receipt-panel-insights" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-insights" hidden>
             <div class="receipt-insights-layout">
             <section class="receipt-card receipt-top-card">
-              <div class="receipt-card-heading"><p class="eyebrow">ITEM INSIGHTS</p></div>
+              <div class="receipt-card-heading">
+                <p class="eyebrow">ITEM INSIGHTS</p>
+                <div class="receipt-breakdown-controls" role="group" aria-label="Sort item insights">
+                  <button type="button" id="receipt-sort-spend" class="secondary receipt-breakdown-button" aria-label="Sort by total spent" title="Sort by total spent" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v18M17 7c-1-2-3-3-5-3-3 0-5 1.5-5 4s2 3.5 5 4 5 1.5 5 4-2 4-5 4c-2.5 0-4.5-1-5.5-3"/></svg></button>
+                  <button type="button" id="receipt-sort-purchases" class="secondary receipt-breakdown-button" aria-label="Sort by times bought" title="Sort by times bought" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2 11h11l3-8H6M9 20h.01M17 20h.01"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg></button>
+                </div>
+              </div>
               <div class="table-wrap mobile-card-table receipt-top-table-wrap">
                 <table class="receipt-top-table" aria-label="Top bought items">
                   <thead class="visually-hidden"><tr><th>Item</th><th>Total spend</th></tr></thead>
@@ -348,6 +354,20 @@
               </div>
             </section>
           </section>
+          <dialog id="receipt-category-dialog" class="receipt-price-trend-dialog receipt-category-dialog" aria-labelledby="receipt-category-dialog-title">
+            <section class="receipt-card">
+              <div class="receipt-card-heading">
+                <h3 id="receipt-category-dialog-title"></h3>
+                <button type="button" id="receipt-category-close" class="receipt-price-trend-close" aria-label="Close category editor" title="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+              </div>
+              <form id="receipt-category-form">
+                <label for="receipt-category-input">Category</label>
+                <input type="text" id="receipt-category-input" list="receipt-category-suggestions" placeholder="Uncategorized" autocomplete="off" autofocus />
+                <p id="receipt-category-error" class="error" role="alert"></p>
+                <button type="submit" id="receipt-category-save">Save</button>
+              </form>
+            </section>
+          </dialog>
           <dialog id="receipt-price-trend-dialog" class="receipt-price-trend-dialog" aria-labelledby="receipt-price-trend-title">
             <section class="receipt-card">
               <div class="receipt-card-heading">
@@ -374,7 +394,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
-    <script src="js/script.js?v=4"></script>
-    <script src="js/receipt-analytics.js?v=28"></script>
+    <script src="js/script.js?v=5"></script>
+    <script src="js/receipt-analytics.js?v=31"></script>
   </body>
 </html>

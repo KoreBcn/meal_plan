@@ -20,6 +20,8 @@ const receiptTopItems = document.getElementById('receipt-top-items');
 const receiptTopPrev = document.getElementById('receipt-top-prev');
 const receiptTopNext = document.getElementById('receipt-top-next');
 const receiptTopLabel = document.getElementById('receipt-top-label');
+const receiptSortSpend = document.getElementById('receipt-sort-spend');
+const receiptSortPurchases = document.getElementById('receipt-sort-purchases');
 const receiptCategorySummary = document.getElementById('receipt-category-summary');
 const receiptSupermarketSummary = document.getElementById('receipt-supermarket-summary');
 const receiptShowCategories = document.getElementById('receipt-show-categories');
@@ -38,6 +40,16 @@ const receiptPriceTrendDialog = document.getElementById('receipt-price-trend-dia
 const receiptPriceTrendTitle = document.getElementById('receipt-price-trend-title');
 const receiptPriceTrendChart = document.getElementById('receipt-price-trend-chart');
 const receiptPriceTrendClose = document.getElementById('receipt-price-trend-close');
+const receiptCategoryDialog = document.getElementById('receipt-category-dialog');
+const receiptCategoryDialogTitle = document.getElementById('receipt-category-dialog-title');
+const receiptCategoryForm = document.getElementById('receipt-category-form');
+const receiptCategoryInput = document.getElementById('receipt-category-input');
+const receiptCategoryError = document.getElementById('receipt-category-error');
+const receiptCategorySave = document.getElementById('receipt-category-save');
+const receiptCategoryClose = document.getElementById('receipt-category-close');
+
+let receiptCategoryItemId = null;
+let receiptCategorySaving = false;
 
 const receiptAnalytics = {
   rows: [],
@@ -52,6 +64,7 @@ const receiptAnalytics = {
   mappingPage: 0,
   reviewOnly: false,
   topPage: 0,
+  topSort: 'spend',
   breakdownView: 'category',
   breakdownPages: { category: 0, supermarket: 0 },
   insightCategories: null,
@@ -163,6 +176,15 @@ function initReceiptAnalytics() {
   };
   receiptShowCategories.addEventListener('click', () => showReceiptBreakdown(false));
   receiptShowSupermarkets.addEventListener('click', () => showReceiptBreakdown(true));
+  const sortTopItems = (sort) => {
+    receiptAnalytics.topSort = sort;
+    receiptAnalytics.topPage = 0;
+    receiptSortSpend.setAttribute('aria-pressed', String(sort === 'spend'));
+    receiptSortPurchases.setAttribute('aria-pressed', String(sort === 'purchases'));
+    renderTopReceiptItems(filteredReceiptRows(false));
+  };
+  receiptSortSpend.addEventListener('click', () => sortTopItems('spend'));
+  receiptSortPurchases.addEventListener('click', () => sortTopItems('purchases'));
   const changeBreakdownPage = (delta) => {
     const view = receiptAnalytics.breakdownView;
     receiptAnalytics.breakdownPages[view] += delta;
@@ -187,8 +209,13 @@ function initReceiptAnalytics() {
       chart.querySelectorAll(`[data-bar-${kind}]`).forEach((item) => {
         const selected = item.dataset[kind === 'categories' ? 'barCategories' : 'barSupermarkets'];
         item.setAttribute('aria-pressed', String(selected === JSON.stringify(receiptAnalytics[selection])));
+        if (item.dataset.missingSelection && item !== bar) item.remove();
       });
       renderTopReceiptItems(filteredReceiptRows(false));
+      if (bar.dataset.missingSelection) {
+        bar.remove();
+        (kind === 'categories' ? receiptShowCategories : receiptShowSupermarkets).focus();
+      }
     });
   });
   receiptPagePrev.addEventListener('click', () => {
@@ -295,7 +322,55 @@ function initReceiptAnalytics() {
     }));
   });
   receiptAllItems.addEventListener('change', handleCategoryEdit);
-  receiptTopItems.addEventListener('click', handlePriceTrendClick);
+  receiptTopItems.addEventListener('click', (event) => {
+    if (event.target.closest('[data-price-trend-item]')) {
+      handlePriceTrendClick(event);
+      return;
+    }
+    const button = event.target.closest('[data-categorize-item]');
+    if (!button) return;
+    const item = receiptAnalytics.items.find((candidate) => candidate.id === button.dataset.categorizeItem);
+    if (!item) {
+      setReceiptStatus('Could not find the selected receipt item.', true);
+      return;
+    }
+    receiptCategoryItemId = item.id;
+    receiptCategoryDialogTitle.textContent = item.name;
+    receiptCategoryInput.value = item.category || '';
+    receiptCategoryError.textContent = '';
+    receiptCategoryDialog.showModal();
+  });
+  receiptCategoryForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (receiptCategorySaving) return;
+    receiptCategorySaving = true;
+    receiptCategorySave.disabled = true;
+    receiptCategoryClose.disabled = true;
+    receiptCategoryInput.disabled = true;
+    receiptCategoryError.textContent = '';
+    const saved = await saveReceiptCategory(
+      receiptCategoryItemId, receiptCategoryInput.value.trim() || null, receiptCategoryDialogTitle.textContent
+    );
+    receiptCategorySaving = false;
+    receiptCategorySave.disabled = false;
+    receiptCategoryClose.disabled = false;
+    receiptCategoryInput.disabled = false;
+    if (saved) {
+      receiptCategoryDialog.close();
+      const itemButton = [...receiptTopItems.querySelectorAll('[data-categorize-item]')]
+        .find((button) => button.dataset.categorizeItem === receiptCategoryItemId);
+      (itemButton || receiptSortSpend).focus();
+    } else {
+      receiptCategoryError.textContent = receiptStatus.textContent;
+    }
+  });
+  receiptCategoryClose.addEventListener('click', () => receiptCategoryDialog.close());
+  receiptCategoryDialog.addEventListener('cancel', (event) => {
+    if (receiptCategorySaving) event.preventDefault();
+  });
+  receiptCategoryDialog.addEventListener('click', (event) => {
+    if (event.target === receiptCategoryDialog && !receiptCategorySaving) receiptCategoryDialog.close();
+  });
   receiptPriceTrendClose.addEventListener('click', () => receiptPriceTrendDialog.close());
   receiptPriceTrendDialog.addEventListener('click', (event) => {
     if (event.target === receiptPriceTrendDialog) {
@@ -462,7 +537,8 @@ function updateReceiptYearOptions() {
 function updateReceiptCategoryOptions() {
   const categories = categoryNames();
   if (receiptAnalytics.category && !categories.includes(receiptAnalytics.category)) {
-    receiptAnalytics.category = '';
+    categories.push(receiptAnalytics.category);
+    categories.sort((left, right) => left.localeCompare(right));
   }
   receiptCategoryFilter.innerHTML = [
     '<option value="">All categories</option>',
@@ -698,6 +774,14 @@ function renderReceiptSupermarkets(rows) {
 function renderReceiptBars(entries, label) {
   const total = entries.reduce((sum, entry) => sum + entry.spend, 0);
   const valid = entries.length && total > 0 && !entries.some((entry) => entry.spend < 0);
+  const kind = label === 'category' ? 'categories' : 'supermarkets';
+  const selection = label === 'category' ? receiptAnalytics.insightCategories : receiptAnalytics.insightSupermarkets;
+  const missingSelection = selection && (!valid || !entries.some((entry) =>
+    JSON.stringify([entry.name]) === JSON.stringify(selection)
+  ));
+  const clearSelection = missingSelection
+    ? `<button type="button" class="secondary receipt-selection-clear" data-bar-${kind}="${escapeReceiptHtml(JSON.stringify(selection))}" data-missing-selection="true" aria-pressed="true">Clear ${label}: ${escapeReceiptHtml(selection.join(', '))}</button>`
+    : '';
   const pageSize = 10;
   const pageCount = valid ? Math.ceil(entries.length / pageSize) : 1;
   const page = Math.max(0, Math.min(receiptAnalytics.breakdownPages[label], pageCount - 1));
@@ -708,7 +792,7 @@ function renderReceiptBars(entries, label) {
     receiptBreakdownLabel.textContent = `Page ${page + 1} of ${pageCount}`;
   }
   if (!valid) {
-    return `<p class="receipt-empty">No positive ${label} totals available for a bar chart.</p>`;
+    return `${clearSelection}<p class="receipt-empty">No positive ${label} totals available for a bar chart.</p>`;
   }
   const sorted = [...entries].sort((left, right) =>
     right.spend - left.spend || left.name.localeCompare(right.name)
@@ -718,13 +802,12 @@ function renderReceiptBars(entries, label) {
   const bars = shown.map((entry) => {
     const name = entry.name;
     const detail = `${name}: ${receiptChartMoney.format(entry.spend)}${entry.discount == null ? '' : `; discounts: ${receiptChartMoney.format(entry.discount)}`} (${Math.round(entry.spend / total * 100)}%)`;
-    const kind = label === 'category' ? 'categories' : 'supermarkets';
-    const selection = label === 'category' ? receiptAnalytics.insightCategories : receiptAnalytics.insightSupermarkets;
     const values = [entry.name];
     const selectionAttributes = ` data-bar-${kind}="${escapeReceiptHtml(JSON.stringify(values))}" aria-pressed="${JSON.stringify(selection) === JSON.stringify(values)}"`;
     return `<button type="button" class="receipt-bar" data-bar-detail="${escapeReceiptHtml(detail)}"${selectionAttributes} aria-label="${escapeReceiptHtml(detail)}" title="${escapeReceiptHtml(detail)}"><span class="receipt-bar-fill" style="width: ${entry.spend / max * 100}%"></span><span class="receipt-bar-label">${escapeReceiptHtml(name)}</span><span class="receipt-bar-amount">${receiptChartMoney.format(entry.spend)}</span></button>`;
   }).join('');
   return `
+    ${clearSelection}
     <div class="receipt-bar-chart" role="group" aria-label="Spending by ${label}">
       ${bars}
     </div>
@@ -767,19 +850,26 @@ function renderTopReceiptItems(rows) {
     && (!receiptAnalytics.insightSupermarkets || receiptAnalytics.insightSupermarkets.includes(row.supermarket?.trim() || 'Unknown'))
   );
   const items = aggregateReceiptItems(matchingRows);
+  if (receiptAnalytics.topSort === 'purchases') {
+    items.sort((left, right) =>
+      right.purchases - left.purchases || right.spend - left.spend || left.name.localeCompare(right.name)
+    );
+  }
   const pageSize = 10;
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   receiptAnalytics.topPage = Math.max(0, Math.min(receiptAnalytics.topPage, pageCount - 1));
   receiptTopPrev.disabled = receiptAnalytics.topPage === 0;
   receiptTopNext.disabled = receiptAnalytics.topPage === pageCount - 1;
   receiptTopLabel.textContent = `Page ${receiptAnalytics.topPage + 1} of ${pageCount}`;
-  const maxSpend = items.length ? Math.max(0, items[0].spend) : 0;
+  const maxSpend = items.reduce((max, item) => Math.max(max, item.spend), 0);
   receiptTopItems.innerHTML = items.length
     ? items.slice(receiptAnalytics.topPage * pageSize, (receiptAnalytics.topPage + 1) * pageSize).map((item) => `
       <tr class="receipt-top-row" style="--receipt-item-bar: ${maxSpend > 0 ? item.spend / maxSpend * 100 : 0}%">
         <td data-label="Item">
-          ${escapeReceiptHtml(item.name)}
-          <small class="receipt-top-item-details">${[...item.amounts.entries()].map(([unit, amount]) => `${receiptNumber.format(amount)}${unit ? ` ${escapeReceiptHtml(unit)}` : ''}`).join(' + ')} · ${item.purchases} purchases · ${escapeReceiptHtml(item.category)}</small>
+          <button type="button" class="receipt-top-item-button" data-categorize-item="${escapeReceiptHtml(item.itemId)}" aria-label="Edit category for ${escapeReceiptHtml(item.name)}" title="Edit category">
+            ${escapeReceiptHtml(item.name)}
+            <small class="receipt-top-item-details">${[...item.amounts.entries()].map(([unit, amount]) => `${receiptNumber.format(amount)}${unit ? ` ${escapeReceiptHtml(unit)}` : ''}`).join(' + ')} · ${item.purchases} purchases · ${escapeReceiptHtml(item.category)}</small>
+          </button>
         </td>
         <td data-label="Total spend">
           <div class="receipt-top-item-spend">
@@ -957,15 +1047,14 @@ async function saveReceiptCategory(itemId, category, itemName) {
         row.category = category || '';
       }
     });
-    receiptAnalytics.insightCategories = null;
-    receiptAnalytics.insightSupermarkets = null;
-    receiptAnalytics.topPage = 0;
     updateReceiptUncategorizedAlert();
     setReceiptStatus(`Saved category mapping for ${itemName}.`);
     renderReceiptAnalytics();
+    return true;
   } catch (error) {
     setReceiptStatus(error.message || String(error), true);
     renderReceiptAnalytics();
+    return false;
   }
 }
 

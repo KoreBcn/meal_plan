@@ -8,7 +8,9 @@ A shared meal planner backed by Supabase. Household members see the same ingredi
 - Browse dishes in historical order
 - Plan up to seven meals in one compact weekly view, with searchable dish selection and per-meal ingredient exclusions
 - Search for individual ingredients in the weekly planner and manage them in their category buckets
-- Generate a categorized shopping list with estimated costs
+- Generate a categorized shopping list with estimated costs; it opens by default when nonempty, otherwise Analytics opens
+- Sort Item Insights by total spent or times bought
+- Select an item in Item Insights to edit its category without resetting active filters or selections
 - View spreadsheet history and live weekly meal rankings
 - Share one meal plan with authorized household accounts
 
