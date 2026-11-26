@@ -2636,18 +2636,6 @@ body[data-theme="dark"] .weekly-chart-count {
   display: none;
 }
 
-.receipt-uncategorized-badge {
-  display: inline-flex;
-  margin-left: 8px;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #fff0cc;
-  color: #73510e;
-  font-size: 0.72rem;
-  font-weight: 700;
-  vertical-align: middle;
-}
-
 .receipt-analytics-toolbar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2835,58 +2823,6 @@ body[data-theme="dark"] .weekly-chart-count {
   min-width: 130px;
   min-height: 38px;
   padding: 7px 10px;
-}
-
-.receipt-item-category-control {
-  display: flex;
-  min-width: 190px;
-  align-items: center;
-  gap: 7px;
-}
-
-.receipt-card .receipt-item-category-control input[type="text"] {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.receipt-item-filter {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.receipt-item-filter input {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.receipt-review-filter {
-  display: grid;
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  place-items: center;
-  padding: 9px;
-}
-
-.receipt-review-filter[hidden] {
-  display: none;
-}
-
-.receipt-review-filter[aria-pressed="true"] {
-  background: var(--primary);
-  color: white;
-}
-
-.receipt-review-filter svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
 }
 
 .receipt-review-filter[aria-pressed="true"] .receipt-review-slash {
@@ -3192,10 +3128,6 @@ body[data-theme="dark"] .weekly-chart-count {
     gap: 6px;
   }
 
-  #receipt-panel-all-items .mobile-card-table tbody td[data-label="Item"],
-  #receipt-panel-all-items .mobile-card-table tbody td[data-label="Category"] {
-    grid-column: 1 / -1;
-  }
 }
 
 body[data-theme="dark"] .meal-ranking-row {
@@ -3278,12 +3210,6 @@ body[data-theme="dark"] .shopping-item-check input:checked {
 
 .receipt-analytics-toolbar {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-@media (min-width: 641px) {
-  .receipt-analytics-toolbar.receipt-mappings-toolbar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 .receipt-tab-bar {

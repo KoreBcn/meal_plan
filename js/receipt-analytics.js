@@ -29,10 +29,6 @@ const receiptShowSupermarkets = document.getElementById('receipt-show-supermarke
 const receiptBreakdownPrev = document.getElementById('receipt-breakdown-prev');
 const receiptBreakdownNext = document.getElementById('receipt-breakdown-next');
 const receiptBreakdownLabel = document.getElementById('receipt-breakdown-label');
-const receiptAllItems = document.getElementById('receipt-all-items');
-const receiptPagePrev = document.getElementById('receipt-page-prev');
-const receiptPageNext = document.getElementById('receipt-page-next');
-const receiptPageLabel = document.getElementById('receipt-page-label');
 const receiptCategorySuggestions = document.getElementById('receipt-category-suggestions');
 const receiptReviewOnly = document.getElementById('receipt-review-only');
 const receiptUncategorizedAlert = document.getElementById('receipt-uncategorized-alert');
@@ -61,7 +57,6 @@ const receiptAnalytics = {
   category: '',
   supermarket: '',
   itemSearch: '',
-  mappingPage: 0,
   reviewOnly: false,
   topPage: 0,
   topSort: 'spend',
@@ -122,7 +117,6 @@ function initReceiptAnalytics() {
   });
   receiptCategoryFilter.addEventListener('change', () => {
     receiptAnalytics.category = receiptCategoryFilter.value;
-    receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
@@ -131,7 +125,6 @@ function initReceiptAnalytics() {
   });
   receiptSupermarketFilter.addEventListener('change', () => {
     receiptAnalytics.supermarket = receiptSupermarketFilter.value;
-    receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
@@ -140,7 +133,6 @@ function initReceiptAnalytics() {
   });
   receiptItemSearch.addEventListener('input', () => {
     receiptAnalytics.itemSearch = receiptItemSearch.value.trim().toLocaleLowerCase();
-    receiptAnalytics.mappingPage = 0;
     receiptAnalytics.topPage = 0;
     receiptAnalytics.breakdownPages = { category: 0, supermarket: 0 };
     receiptAnalytics.insightCategories = null;
@@ -218,22 +210,16 @@ function initReceiptAnalytics() {
       }
     });
   });
-  receiptPagePrev.addEventListener('click', () => {
-    receiptAnalytics.mappingPage -= 1;
-    renderAllReceiptItems();
-  });
-  receiptPageNext.addEventListener('click', () => {
-    receiptAnalytics.mappingPage += 1;
-    renderAllReceiptItems();
-  });
   receiptReviewOnly.addEventListener('click', () => {
     receiptAnalytics.reviewOnly = !receiptAnalytics.reviewOnly;
     receiptReviewOnly.setAttribute('aria-pressed', String(receiptAnalytics.reviewOnly));
-    receiptReviewOnly.title = receiptAnalytics.reviewOnly
+    const label = receiptAnalytics.reviewOnly
       ? 'Show all items'
       : 'Show only items needing a category';
-    receiptAnalytics.mappingPage = 0;
-    renderAllReceiptItems();
+    receiptReviewOnly.setAttribute('aria-label', label);
+    receiptReviewOnly.title = label;
+    receiptAnalytics.topPage = 0;
+    renderTopReceiptItems(filteredReceiptRows(false));
   });
   receiptTopPrev.addEventListener('click', () => {
     receiptAnalytics.topPage -= 1;
@@ -321,7 +307,6 @@ function initReceiptAnalytics() {
         : help;
     }));
   });
-  receiptAllItems.addEventListener('change', handleCategoryEdit);
   receiptTopItems.addEventListener('click', (event) => {
     if (event.target.closest('[data-price-trend-item]')) {
       handlePriceTrendClick(event);
@@ -496,9 +481,6 @@ async function loadAllReceiptRows(queryFactory) {
 }
 
 function activateReceiptTab(name) {
-  receiptReviewOnly.hidden = name !== 'all-items';
-  receiptYearFilter.hidden = name === 'all-items';
-  receiptAnalyticsToolbar.classList.toggle('receipt-mappings-toolbar', name === 'all-items');
   receiptTabs.forEach((tab) => {
     const active = tab.dataset.receiptTab === name;
     tab.classList.toggle('active', active);
@@ -569,7 +551,7 @@ function updateReceiptUncategorizedAlert() {
   const count = receiptAnalytics.items.filter((item) => normalizeCategory(item.category) === 'Uncategorized').length;
   receiptUncategorizedAlert.hidden = count === 0;
   receiptUncategorizedAlert.textContent = count
-    ? `${count.toLocaleString()} item${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} a category. Assign ${count === 1 ? 'it' : 'them'} in the Mappings tab.`
+    ? `${count.toLocaleString()} item${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} a category. Review ${count === 1 ? 'it' : 'them'} in Item Insights.`
     : '';
 }
 
@@ -590,7 +572,6 @@ function renderReceiptAnalytics() {
   renderTopReceiptItems(yearlyRows);
   renderReceiptCategories(yearlyRows);
   renderReceiptSupermarkets(yearlyRows);
-  renderAllReceiptItems();
 }
 
 function renderReceiptKpis() {
@@ -846,13 +827,31 @@ function aggregateReceiptItems(rows) {
 
 function renderTopReceiptItems(rows) {
   const matchingRows = rows.filter((row) =>
-    (!receiptAnalytics.insightCategories || receiptAnalytics.insightCategories.includes(normalizeCategory(row.category)))
+    (!receiptAnalytics.reviewOnly || normalizeCategory(row.category) === 'Uncategorized')
+    && (!receiptAnalytics.insightCategories || receiptAnalytics.insightCategories.includes(normalizeCategory(row.category)))
     && (!receiptAnalytics.insightSupermarkets || receiptAnalytics.insightSupermarkets.includes(row.supermarket?.trim() || 'Unknown'))
   );
   const items = aggregateReceiptItems(matchingRows);
+  if (!receiptAnalytics.supermarket && !receiptAnalytics.insightSupermarkets) {
+    const purchasedIds = new Set(receiptAnalytics.rows.map((row) => row.item_id));
+    receiptAnalytics.items.forEach((item) => {
+      const category = normalizeCategory(item.category);
+      if (!purchasedIds.has(item.id)
+        && (!receiptAnalytics.reviewOnly || category === 'Uncategorized')
+        && (!receiptAnalytics.category || category === receiptAnalytics.category)
+        && (!receiptAnalytics.insightCategories || receiptAnalytics.insightCategories.includes(category))
+        && (!receiptAnalytics.itemSearch || item.name.toLocaleLowerCase().includes(receiptAnalytics.itemSearch))) {
+        items.push({ name: item.name, purchases: 0, spend: 0, amounts: new Map(), category, itemId: item.id });
+      }
+    });
+  }
   if (receiptAnalytics.topSort === 'purchases') {
     items.sort((left, right) =>
       right.purchases - left.purchases || right.spend - left.spend || left.name.localeCompare(right.name)
+    );
+  } else {
+    items.sort((left, right) =>
+      right.spend - left.spend || right.purchases - left.purchases || left.name.localeCompare(right.name)
     );
   }
   const pageSize = 10;
@@ -868,7 +867,11 @@ function renderTopReceiptItems(rows) {
         <td data-label="Item">
           <button type="button" class="receipt-top-item-button" data-categorize-item="${escapeReceiptHtml(item.itemId)}" aria-label="Edit category for ${escapeReceiptHtml(item.name)}" title="Edit category">
             ${escapeReceiptHtml(item.name)}
-            <small class="receipt-top-item-details">${[...item.amounts.entries()].map(([unit, amount]) => `${receiptNumber.format(amount)}${unit ? ` ${escapeReceiptHtml(unit)}` : ''}`).join(' + ')} · ${item.purchases} purchases · ${escapeReceiptHtml(item.category)}</small>
+            <small class="receipt-top-item-details">${[
+              [...item.amounts.entries()].map(([unit, amount]) => `${receiptNumber.format(amount)}${unit ? ` ${escapeReceiptHtml(unit)}` : ''}`).join(' + '),
+              `${item.purchases} purchases`,
+              escapeReceiptHtml(item.category)
+            ].filter(Boolean).join(' · ')}</small>
           </button>
         </td>
         <td data-label="Total spend">
@@ -903,46 +906,6 @@ function renderReceiptCategories(rows) {
   receiptCategorySuggestions.innerHTML = [...new Set([...receiptValidCategories, ...categoryNames()])]
     .filter((category) => category !== 'Uncategorized')
     .map((category) => `<option value="${escapeReceiptHtml(category)}"></option>`).join('');
-}
-
-function renderAllReceiptItems() {
-  const aggregates = new Map(aggregateReceiptItems(filteredReceiptRows(false, false))
-    .map((item) => [item.itemId, item]));
-  const items = receiptAnalytics.items.filter((item) => {
-    const category = normalizeCategory(item.category);
-    return (!receiptAnalytics.reviewOnly || category === 'Uncategorized')
-      && (!receiptAnalytics.category || category === receiptAnalytics.category)
-      && (!receiptAnalytics.itemSearch || item.name.toLocaleLowerCase().includes(receiptAnalytics.itemSearch))
-      && (!receiptAnalytics.supermarket || aggregates.has(item.id));
-  }).sort((left, right) => {
-    const leftSpend = aggregates.get(left.id)?.spend || 0;
-    const rightSpend = aggregates.get(right.id)?.spend || 0;
-    return rightSpend - leftSpend || left.name.localeCompare(right.name);
-  });
-  const pageSize = 20;
-  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
-  receiptAnalytics.mappingPage = Math.max(0, Math.min(receiptAnalytics.mappingPage, pageCount - 1));
-  receiptPagePrev.disabled = receiptAnalytics.mappingPage === 0;
-  receiptPageNext.disabled = receiptAnalytics.mappingPage === pageCount - 1;
-  receiptPageLabel.textContent = `Page ${receiptAnalytics.mappingPage + 1} of ${pageCount}`;
-  receiptAllItems.innerHTML = items.length
-    ? items.slice(receiptAnalytics.mappingPage * pageSize, (receiptAnalytics.mappingPage + 1) * pageSize).map((item) => {
-      const aggregate = aggregates.get(item.id);
-      const category = normalizeCategory(item.category);
-      return `
-        <tr>
-          <td data-label="Item">${escapeReceiptHtml(item.name)}${category === 'Uncategorized' ? '<span class="receipt-uncategorized-badge">Needs category</span>' : ''}</td>
-          <td data-label="Purchases">${aggregate?.purchases || 0}</td>
-          <td data-label="Total spend">${formatReceiptMoney(aggregate?.spend || 0)}</td>
-          <td data-label="Category">
-            <div class="receipt-item-category-control">
-              <input type="text" list="receipt-category-suggestions" value="${category === 'Uncategorized' ? '' : escapeReceiptHtml(category)}" placeholder="Uncategorized" data-category-item="${escapeReceiptHtml(item.id)}" aria-label="Category for ${escapeReceiptHtml(item.name)}" />
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('')
-    : '<tr><td colspan="4" class="receipt-empty">No items match these filters.</td></tr>';
 }
 
 function handlePriceTrendClick(event) {
@@ -1017,16 +980,6 @@ function renderPriceTrendChart(history) {
     </svg>
     <p class="receipt-price-trend-count">${history.length.toLocaleString()} purchase${history.length === 1 ? '' : 's'} in history</p>
   `;
-}
-
-async function handleCategoryEdit(event) {
-  const input = event.target.closest('[data-category-item]');
-  if (!input) {
-    return;
-  }
-  const itemId = input.dataset.categoryItem;
-  const category = input.value.trim() || null;
-  await saveReceiptCategory(itemId, category, input.getAttribute('aria-label').replace(/^Category for /, ''));
 }
 
 async function saveReceiptCategory(itemId, category, itemName) {

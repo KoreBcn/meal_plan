@@ -189,7 +189,6 @@ test('spending details load and display supermarkets', async () => {
     renderReceiptCalendar = () => {};
     renderTopReceiptItems = () => {};
     renderReceiptCategories = () => {};
-    renderAllReceiptItems = () => {};
     renderReceiptAnalytics = originalRenderReceiptAnalytics;
     renderReceiptAnalytics();
   `, context);
@@ -254,21 +253,6 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
   assert.match(elements.get('receipt-category-summary').innerHTML, /Bakery/);
   assert.match(elements.get('receipt-supermarket-summary').innerHTML, /Other/);
-  vm.runInContext("activateReceiptTab('all-items')", context);
-  assert.equal(elements.get('receipt-review-only').hidden, false);
-  assert.equal(elements.get('receipt-year-filter').hidden, true);
-  elements.get('receipt-review-only').listeners.click();
-  assert.equal(elements.get('receipt-review-only')['aria-pressed'], 'true');
-  assert.equal(elements.get('receipt-review-only').title, 'Show all items');
-  vm.runInContext("activateReceiptTab('insights')", context);
-  assert.equal(elements.get('receipt-review-only').hidden, true);
-  assert.equal(elements.get('receipt-year-filter').hidden, false);
-  assert.equal(vm.runInContext('receiptAnalytics.reviewOnly', context), true);
-  vm.runInContext("activateReceiptTab('all-items')", context);
-  assert.equal(elements.get('receipt-review-only').hidden, false);
-  assert.equal(elements.get('receipt-review-only')['aria-pressed'], 'true');
-  elements.get('receipt-review-only').listeners.click();
-  assert.equal(elements.get('receipt-review-only')['aria-pressed'], 'false');
   const categoryButton = elements.get('receipt-show-categories');
   const supermarketButton = elements.get('receipt-show-supermarkets');
   for (const button of [categoryButton, supermarketButton]) {
@@ -324,9 +308,8 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.equal(filterToggle['aria-label'], 'Show filters');
   assert.equal(filterToggle.title, 'Show filters');
   assert.ok(toolbarClasses.has('receipt-filters-collapsed'));
-  vm.runInContext("activateReceiptTab('all-items')", context);
+  vm.runInContext("activateReceiptTab('spending')", context);
   assert.ok(toolbarClasses.has('receipt-filters-collapsed'));
-  assert.equal(elements.get('receipt-year-filter').hidden, true);
   filterToggle.listeners.click();
   assert.equal(filterToggle['aria-expanded'], 'true');
   assert.equal(filterToggle['aria-label'], 'Hide filters');
@@ -335,7 +318,6 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.equal(vm.runInContext('receiptAnalytics.category', context), 'Food');
   assert.equal(vm.runInContext('receiptAnalytics.itemSearch', context), 'milk');
   vm.runInContext("activateReceiptTab('insights')", context);
-  assert.equal(elements.get('receipt-year-filter').hidden, false);
 
   elements.get('receipt-top-next').listeners.click();
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
@@ -346,11 +328,9 @@ test('insights ignores spending selections but respects filter pane and paginati
   assert.equal(elements.get('receipt-top-label').textContent, 'Page 2 of 2');
   assert.match(elements.get('receipt-top-items').innerHTML, /Milk 11/);
 
-  const mappingsBeforeYearChange = elements.get('receipt-all-items').innerHTML;
   elements.get('receipt-year-filter').value = '2023';
   elements.get('receipt-year-filter').listeners.change();
   assert.match(elements.get('receipt-top-items').innerHTML, /No items match/);
-  assert.equal(elements.get('receipt-all-items').innerHTML, mappingsBeforeYearChange);
 
   const chart = elements.get('receipt-category-summary');
   const detail = { textContent: '' };
@@ -446,68 +426,6 @@ test('insights ignores spending selections but respects filter pane and paginati
   elements.get('receipt-item-search').listeners.input();
   assert.match(elements.get('receipt-top-items').innerHTML, /Item 0/);
 
-  vm.runInContext(`
-    receiptAnalytics.category = '';
-    receiptAnalytics.supermarket = '';
-    receiptAnalytics.itemSearch = '';
-    receiptAnalytics.items = Array.from({length: 25}, (_, i) => ({id:String(i), name:'Item ' + i, category:'Food'}));
-    receiptAnalytics.mappingPage = 1;
-    renderReceiptAnalytics();
-  `, context);
-  assert.equal(elements.get('receipt-page-label').textContent, 'Page 2 of 2');
-  elements.get('receipt-year-filter').value = '2023';
-  elements.get('receipt-year-filter').listeners.change();
-  assert.equal(elements.get('receipt-page-label').textContent, 'Page 2 of 2');
-  elements.get('receipt-summary').listeners.click({
-    target: { closest: () => ({ dataset: { receiptMonth: '03' } }) }
-  });
-  assert.equal(elements.get('receipt-page-label').textContent, 'Page 2 of 2');
-});
-
-test('mapping totals and supermarket filtering ignore year and month but retain other filters', () => {
-  const elements = new Map();
-  const context = vm.createContext({
-    document: {
-      getElementById(id) {
-        if (!elements.has(id)) elements.set(id, { classList: { toggle() {} } });
-        return elements.get(id);
-      },
-      querySelectorAll: () => []
-    }
-  });
-  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
-  vm.runInContext(source.replace('initReceiptAnalytics();', ''), context);
-  vm.runInContext(`
-    receiptAnalytics.year = '2024';
-    receiptAnalytics.month = '01';
-    receiptAnalytics.items = [
-      {id:'1',name:'Milk',category:'Dairy'},
-      {id:'2',name:'Bread',category:'Bakery'}
-    ];
-    receiptAnalytics.rows = [
-      {date:'2023-01-01',item_id:'1',item:'Milk',category:'Dairy',supermarket:'Netto',amount:'1',price:10},
-      {date:'2024-01-01',item_id:'1',item:'Milk',category:'Dairy',supermarket:'Netto',amount:'1',price:20},
-      {date:'2023-02-01',item_id:'1',item:'Milk',category:'Dairy',supermarket:'Netto',amount:'1',price:50},
-      {date:'2023-01-01',item_id:'2',item:'Bread',category:'Bakery',supermarket:'Other',amount:'1',price:5}
-    ];
-    receiptAnalytics.supermarket = 'Netto';
-    renderAllReceiptItems();
-  `, context);
-  let html = elements.get('receipt-all-items').innerHTML;
-  const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK' });
-  assert.match(html, /data-label="Purchases">3</);
-  assert.ok(html.includes(`<td data-label="Total spend">${money.format(80)}</td>`));
-  assert.doesNotMatch(html, /Bread/);
-  vm.runInContext("receiptAnalytics.year = '2023'; renderAllReceiptItems()", context);
-  assert.equal(elements.get('receipt-all-items').innerHTML, html);
-  vm.runInContext("receiptAnalytics.month = '02'; renderAllReceiptItems()", context);
-  assert.equal(elements.get('receipt-all-items').innerHTML, html);
-  vm.runInContext("receiptAnalytics.itemSearch = 'bread'; renderAllReceiptItems()", context);
-  assert.match(elements.get('receipt-all-items').innerHTML, /No items match/);
-  vm.runInContext("receiptAnalytics.supermarket = ''; renderAllReceiptItems()", context);
-  html = elements.get('receipt-all-items').innerHTML;
-  assert.match(html, /Bread/);
-  assert.match(html, /data-label="Purchases">1</);
 });
 
 test('calendar groups shopping days and reveals only selected matching receipts', () => {
@@ -779,6 +697,89 @@ test('item insights sort toggle orders filtered results and resets pagination', 
   assert.match(page, /id="receipt-sort-purchases"[^>]*aria-label="Sort by times bought"[^>]*aria-pressed="false"/);
 });
 
+test('uncategorized toggle filters item insights, respects filters and paginates without hiding unpurchased items', async () => {
+  const elements = new Map();
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, {
+          listeners: {}, classList: { toggle() {} },
+          setAttribute(name, value) { this[name] = value; },
+          addEventListener(type, handler) { this.listeners[type] = handler; },
+          querySelectorAll: () => []
+        });
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => ({}),
+      documentElement: { style: { setProperty() {} } }
+    },
+    ResizeObserver: class { observe() {} },
+    supabaseClient: {
+      auth: { onAuthStateChange() {}, getSession: () => new Promise(() => {}) },
+      from: () => ({ update: () => ({ eq: async () => ({ error: null }) }) })
+    }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
+  vm.runInContext(source, context);
+  vm.runInContext(`
+    receiptAnalytics.year = '2024';
+    receiptAnalytics.month = '01';
+    receiptAnalytics.items = Array.from({length: 12}, (_, i) => ({id:String(i), name:'Unknown ' + i, category:null}));
+    receiptAnalytics.items.push({id:'orphan',name:'Unpurchased',category:null},
+      {id:'old',name:'Old purchase',category:null}, {id:'known',name:'Known',category:'Dairy'});
+    receiptAnalytics.rows = receiptAnalytics.items.slice(0, 12).map((item, i) => ({
+      date:'2024-02-01', item_id:item.id, item:item.name, category:'', supermarket:'Shop', amount:'1', price:20-i
+    }));
+    receiptAnalytics.rows.push(
+      {date:'2023-01-01', item_id:'old', item:'Old purchase', category:'', supermarket:'Shop', amount:'1', price:100},
+      {date:'2024-01-01', item_id:'known', item:'Known', category:'Dairy', supermarket:'Shop', amount:'1', price:50}
+    );
+    renderReceiptAnalytics();
+    receiptAnalytics.topPage = 1;
+  `, context);
+  const toggle = elements.get('receipt-review-only');
+  const top = elements.get('receipt-top-items');
+  const summaryBefore = elements.get('receipt-summary').innerHTML;
+  toggle.listeners.click();
+  assert.equal(toggle['aria-pressed'], 'true');
+  assert.equal(toggle['aria-label'], 'Show all items');
+  assert.equal(elements.get('receipt-top-label').textContent, 'Page 1 of 2');
+  assert.doesNotMatch(top.innerHTML, /Known|Old purchase/);
+  assert.equal(elements.get('receipt-summary').innerHTML, summaryBefore);
+  elements.get('receipt-top-next').listeners.click();
+  assert.match(top.innerHTML, /Unknown 11/);
+  assert.match(top.innerHTML, /Unpurchased/);
+  assert.match(top.innerHTML, /0 purchases · Uncategorized/);
+  await vm.runInContext("saveReceiptCategory('orphan', 'Dairy', 'Unpurchased')", context);
+  assert.equal(vm.runInContext('receiptAnalytics.reviewOnly', context), true);
+  assert.doesNotMatch(top.innerHTML, /Unpurchased/);
+  toggle.listeners.click();
+  assert.equal(toggle['aria-pressed'], 'false');
+  assert.equal(toggle['aria-label'], 'Show only items needing a category');
+  assert.match(top.innerHTML, /Known/);
+  elements.get('receipt-top-next').listeners.click();
+  assert.match(top.innerHTML, /Unpurchased/);
+  toggle.listeners.click();
+  elements.get('receipt-supermarket-filter').value = 'Shop';
+  elements.get('receipt-supermarket-filter').listeners.change();
+  assert.doesNotMatch(top.innerHTML, /Unpurchased/);
+  elements.get('receipt-category-filter').value = 'Dairy';
+  elements.get('receipt-category-filter').listeners.change();
+  assert.match(top.innerHTML, /No items match these filters/);
+  elements.get('receipt-category-filter').value = '';
+  elements.get('receipt-category-filter').listeners.change();
+  elements.get('receipt-year-filter').value = '2023';
+  elements.get('receipt-year-filter').listeners.change();
+  assert.match(top.innerHTML, /Old purchase/);
+  assert.doesNotMatch(top.innerHTML, /Unknown 0/);
+
+  const page = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert.doesNotMatch(page, /receipt-tab-all-items|receipt-panel-all-items/);
+  assert.match(page, /id="receipt-panel-insights"[\s\S]*id="receipt-review-only"[^>]*aria-pressed="false"/);
+  assert.match(page, /<datalist id="receipt-category-suggestions"><\/datalist>/);
+});
+
 test('bar charts paginate all categories and supermarkets with a consistent scale', () => {
   const elements = new Map();
   const context = vm.createContext({
@@ -831,56 +832,6 @@ test('bar charts paginate all categories and supermarkets with a consistent scal
   assert.ok(otherChart.includes(`Other: ${money.format(100)}`));
   vm.runInContext("renderReceiptCategories([{category:'Food',price:10},{category:'Refund',price:-1}])", context);
   assert.match(elements.get('receipt-category-summary').innerHTML, /No positive category totals/);
-});
-
-test('mappings allow manual edits without local category recommendations', async () => {
-  const elements = new Map();
-  const calls = [];
-  const context = vm.createContext({
-    document: {
-      getElementById(id) {
-        if (!elements.has(id)) elements.set(id, { classList: { toggle() {} } });
-        return elements.get(id);
-      },
-      querySelectorAll: () => []
-    },
-    supabaseClient: {
-      from(table) {
-        calls.push(['from', table]);
-        const query = {
-          update(values) { calls.push(['update', values.category]); return this; },
-          eq(key, value) { calls.push(['eq', key, value]); return Promise.resolve({ error: null }); }
-        };
-        return query;
-      }
-    }
-  });
-  const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'receipt-analytics.js'), 'utf8');
-  vm.runInContext(source.replace('initReceiptAnalytics();', ''), context);
-  vm.runInContext(`
-    receiptAnalytics.items = [
-      {id:'1',name:'BANANER',category:null},
-      {id:'2',name:'YOGHURT',category:'Dairy'}
-    ];
-    receiptAnalytics.rows = [{date:'2024-01-01', item_id:'1', item:'BANANER', amount:'1', price:1, category:''}];
-    renderReceiptAnalytics = () => {};
-    renderAllReceiptItems();
-  `, context);
-  assert.equal(calls.length, 0);
-  assert.doesNotMatch(elements.get('receipt-all-items').innerHTML, /Suggested:|data-accept-category/);
-  assert.match(elements.get('receipt-all-items').innerHTML, /list="receipt-category-suggestions"/);
-  await vm.runInContext(`handleCategoryEdit({
-    target: {closest: () => ({dataset: {categoryItem:'1'}, value:'Fruit', getAttribute: () => 'Category for BANANER'})}
-  })`, context);
-  assert.ok(calls.some((call) => call[0] === 'update' && call[1] === 'Fruit'));
-  assert.ok(calls.some((call) => call[0] === 'eq' && call[1] === 'id' && call[2] === '1'));
-  assert.equal(vm.runInContext("receiptAnalytics.items[0].category", context), 'Fruit');
-  assert.equal(vm.runInContext("receiptAnalytics.rows[0].category", context), 'Fruit');
-
-  vm.runInContext("receiptAnalytics.items[0].category = null; receiptAnalytics.rows[0].category = ''", context);
-  vm.runInContext("receiptAnalytics.reviewOnly = true; renderAllReceiptItems()", context);
-  assert.match(elements.get('receipt-all-items').innerHTML, /BANANER/);
-  assert.doesNotMatch(elements.get('receipt-all-items').innerHTML, /YOGHURT/);
 });
 
 test('item insights category dialog saves, clears, and reports errors without opening the price trend', async () => {
@@ -948,7 +899,6 @@ test('item insights category dialog saves, clears, and reports errors without op
   assert.equal(vm.runInContext('receiptAnalytics.items[0].category', context), 'Fruit');
   assert.equal(vm.runInContext('receiptAnalytics.rows[0].category', context), 'Fruit');
   assert.match(top.innerHTML, /Fruit/);
-  assert.match(elements.get('receipt-all-items').innerHTML, /value="Fruit"/);
   assert.equal(elements.get('receipt-sort-spend').focused, true);
 
   clickItem();
@@ -1093,7 +1043,6 @@ test('KPIs follow the selected month and day while averages follow the filtered 
     receiptAnalytics.month = '01';
     renderReceiptKpis();
     renderReceiptMonthlySummary(filteredReceiptRows(false));
-    renderAllReceiptItems();
   `, context);
   const money = new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 });
   let kpis = elements.get('receipt-kpis').innerHTML;
@@ -1117,14 +1066,6 @@ test('KPIs follow the selected month and day while averages follow the filtered 
   vm.runInContext("receiptAnalytics.selectedDate = '2024-01-02'; renderReceiptAnalytics()", context);
   assert.equal(vm.runInContext('receiptAnalytics.selectedDate', context), null);
   assert.ok(elements.get('receipt-kpis').innerHTML.includes('Jan 2024'));
-  vm.runInContext("receiptAnalytics.supermarket = ''; renderAllReceiptItems()", context);
-  assert.equal((elements.get('receipt-all-items').innerHTML.match(/<tr>/g) || []).length, 20);
-  assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 3');
-  vm.runInContext('receiptAnalytics.mappingPage = 2; renderAllReceiptItems()', context);
-  assert.equal((elements.get('receipt-all-items').innerHTML.match(/<tr>/g) || []).length, 1);
-  vm.runInContext("receiptAnalytics.supermarket = 'Netto'; renderAllReceiptItems()", context);
-  assert.equal(elements.get('receipt-page-label').textContent, 'Page 1 of 1');
-  assert.match(elements.get('receipt-all-items').innerHTML, /Item 0/);
 });
 
 test('KPIs and charts round values without rounding receipt details', () => {

@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
     <link rel="apple-touch-icon" href="assets/app-icon-180.png" />
     <link rel="manifest" href="manifest.webmanifest?v=2" />
-    <link rel="stylesheet" href="style.css?v=36" />
+    <link rel="stylesheet" href="style.css?v=37" />
   </head>
   <body data-theme="dark">
     <section id="auth-panel" class="auth-panel">
@@ -259,7 +259,6 @@
             <div class="receipt-tabs" role="tablist" aria-label="Receipt analytics views">
               <button type="button" id="receipt-tab-spending" class="receipt-tab active" role="tab" aria-selected="true" aria-controls="receipt-panel-spending" data-receipt-tab="spending">Spending</button>
               <button type="button" id="receipt-tab-insights" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-insights" data-receipt-tab="insights" tabindex="-1">Insights</button>
-              <button type="button" id="receipt-tab-all-items" class="receipt-tab" role="tab" aria-selected="false" aria-controls="receipt-panel-all-items" data-receipt-tab="all-items" tabindex="-1">Mappings</button>
             </div>
             <button type="button" id="receipt-filters-toggle" class="secondary receipt-filters-toggle" aria-controls="receipt-analytics-toolbar" aria-expanded="false" aria-label="Show filters" title="Show filters"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></button>
           </div>
@@ -273,10 +272,7 @@
             <select id="receipt-supermarket-filter" aria-label="Filter by supermarket" data-searchable="false" disabled>
               <option value="">All supermarkets</option>
             </select>
-            <div class="receipt-item-filter">
-              <input id="receipt-item-search" type="search" aria-label="Filter by item" placeholder="Filter by item" disabled />
-              <button type="button" id="receipt-review-only" class="secondary receipt-review-filter" aria-label="Show only items needing a category" title="Show only items needing a category" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="receipt-review-slash" d="M4 4l16 16"/></svg></button>
-            </div>
+            <input id="receipt-item-search" type="search" aria-label="Filter by item" placeholder="Filter by item" disabled />
           </div>
           <p id="receipt-uncategorized-alert" class="receipt-uncategorized-alert" role="status" hidden></p>
           <p id="receipt-status" class="status-message" role="status" aria-live="polite"></p>
@@ -300,7 +296,8 @@
             <section class="receipt-card receipt-top-card">
               <div class="receipt-card-heading">
                 <p class="eyebrow">ITEM INSIGHTS</p>
-                <div class="receipt-breakdown-controls" role="group" aria-label="Sort item insights">
+                <div class="receipt-breakdown-controls" role="group" aria-label="Item insights controls">
+                  <button type="button" id="receipt-review-only" class="secondary receipt-breakdown-button receipt-review-filter" aria-label="Show only items needing a category" title="Show only items needing a category" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="receipt-review-slash" d="M4 4l16 16"/></svg></button>
                   <button type="button" id="receipt-sort-spend" class="secondary receipt-breakdown-button" aria-label="Sort by total spent" title="Sort by total spent" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v18M17 7c-1-2-3-3-5-3-3 0-5 1.5-5 4s2 3.5 5 4 5 1.5 5 4-2 4-5 4c-2.5 0-4.5-1-5.5-3"/></svg></button>
                   <button type="button" id="receipt-sort-purchases" class="secondary receipt-breakdown-button" aria-label="Sort by times bought" title="Sort by times bought" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2 11h11l3-8H6M9 20h.01M17 20h.01"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg></button>
                 </div>
@@ -335,25 +332,7 @@
             </section>
             </div>
           </section>
-          <section id="receipt-panel-all-items" class="receipt-tab-panel" role="tabpanel" aria-labelledby="receipt-tab-all-items" hidden>
-            <section class="receipt-card">
-              <div class="receipt-card-heading">
-                <h3>Mappings</h3>
-              </div>
-              <datalist id="receipt-category-suggestions"></datalist>
-              <div class="table-wrap mobile-card-table">
-                <table>
-                  <thead><tr><th>Item</th><th>Purchases</th><th>Total spend</th><th>Category</th></tr></thead>
-                  <tbody id="receipt-all-items"></tbody>
-                </table>
-              </div>
-              <div class="receipt-pagination">
-                <button type="button" id="receipt-page-prev" class="secondary receipt-page-arrow" aria-label="Previous mappings page" title="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
-                <span id="receipt-page-label" aria-live="polite"></span>
-                <button type="button" id="receipt-page-next" class="secondary receipt-page-arrow" aria-label="Next mappings page" title="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
-              </div>
-            </section>
-          </section>
+          <datalist id="receipt-category-suggestions"></datalist>
           <dialog id="receipt-category-dialog" class="receipt-price-trend-dialog receipt-category-dialog" aria-labelledby="receipt-category-dialog-title">
             <section class="receipt-card">
               <div class="receipt-card-heading">
@@ -395,6 +374,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase/supabase-config.js"></script>
     <script src="js/script.js?v=5"></script>
-    <script src="js/receipt-analytics.js?v=31"></script>
+    <script src="js/receipt-analytics.js?v=32"></script>
   </body>
 </html>
